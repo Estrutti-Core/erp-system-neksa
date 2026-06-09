@@ -65,6 +65,15 @@ class ConvertQuoteAction
             'items_amount'      => $quote->items_amount,
             'total_amount'      => $quote->total_amount,
             'notes'             => $quote->notes,
+            'carrier'           => $quote->carrier,
+            'freight_price'     => $quote->freight_price ?? 0.00,
+            'freight_type'      => $quote->freight_type ?? 9,
+            'volume'            => $quote->volume,
+            'weight_gross'      => $quote->weight_gross,
+            'weight_net'        => $quote->weight_net,
+            'delivery_deadline' => $quote->delivery_deadline,
+            'warranty'          => $quote->warranty,
+            'validity'          => $quote->validity,
         ]);
 
         // Transferir os itens
@@ -78,11 +87,6 @@ class ConvertQuoteAction
                 'unit_price'  => $item->unit_price,
                 'total_price' => $item->total_price,
             ]);
-
-            // Atualiza estoque se aplicável
-            if ($item->product && $item->product->is_stock_controlled && !$item->product->isService()) {
-                $item->product->decrement('stock', $item->quantity);
-            }
         }
 
         // Marcar orçamento como convertido
@@ -166,11 +170,6 @@ class ConvertQuoteAction
                 'unit_price'       => $item->unit_price,
                 'total_price'      => $item->total_price,
             ]);
-
-            // Atualiza estoque de peças se controlado
-            if ($item->product && $item->product->is_stock_controlled && !$item->product->isService()) {
-                $item->product->decrement('stock', $item->quantity);
-            }
         }
 
         // Marcar orçamento como convertido

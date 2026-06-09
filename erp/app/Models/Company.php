@@ -14,5 +14,10 @@ class Company extends Model
         'address',
         'logo_path',
         'primary_color',
+        'allow_negative_stock',
+    ];
+
+    protected $casts = [
+        'allow_negative_stock' => 'boolean',
     ];
 }

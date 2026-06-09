@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             ServiceOrderSeeder::class,
             CompanySeeder::class,
             MockDataSeeder::class,
+            DemoDataSeeder::class,
         ]);
     }
 }

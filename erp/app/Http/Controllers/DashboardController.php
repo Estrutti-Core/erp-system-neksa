@@ -64,6 +64,41 @@ class DashboardController extends Controller
             $totalSalesValue    = Sale::whereIn('status', [SaleStatus::Completed->value, SaleStatus::Pending->value])->sum('total_amount');
             $recentQuotes       = Quote::with('client')->latest()->limit(5)->get();
             $recentSales        = Sale::with('client')->latest()->limit(5)->get();
+
+            // Novas Métricas Financeiras (Módulo G)
+            $overdueQuery = \App\Models\ReceivableInstallment::where('status', \App\Enums\InstallmentStatus::Pending->value)
+                ->whereDate('due_date', '<', today());
+            $overdueCount = $overdueQuery->count();
+            $overdueAmount = (float) $overdueQuery->sum(\DB::raw('amount - paid_amount'));
+
+            $dueTodayQuery = \App\Models\ReceivableInstallment::where('status', \App\Enums\InstallmentStatus::Pending->value)
+                ->whereDate('due_date', today());
+            $dueTodayCount = $dueTodayQuery->count();
+            $dueTodayAmount = (float) $dueTodayQuery->sum(\DB::raw('amount - paid_amount'));
+
+            $dueNext7DaysQuery = \App\Models\ReceivableInstallment::where('status', \App\Enums\InstallmentStatus::Pending->value)
+                ->whereBetween('due_date', [today()->addDay(), today()->addDays(7)]);
+            $dueNext7DaysCount = $dueNext7DaysQuery->count();
+            $dueNext7DaysAmount = (float) $dueNext7DaysQuery->sum(\DB::raw('amount - paid_amount'));
+
+            $accumulatedOverdueAmount = $overdueAmount;
+            $averageReceivableAmount = (float) \App\Models\Receivable::avg('total_amount') ?? 0.00;
+            $averageSaleAmount = (float) Sale::where('status', SaleStatus::Completed->value)->avg('total_amount') ?? 0.00;
+
+            $currentMonthRevenue = (float) \App\Models\Receivable::whereBetween('competence_date', [
+                today()->startOfMonth(),
+                today()->endOfMonth()
+            ])->sum('total_amount');
+
+            $previousMonthRevenue = (float) \App\Models\Receivable::whereBetween('competence_date', [
+                today()->subMonth()->startOfMonth(),
+                today()->subMonth()->endOfMonth()
+            ])->sum('total_amount');
+
+            $monthlyChangePercent = 0.00;
+            if ($previousMonthRevenue > 0) {
+                $monthlyChangePercent = (($currentMonthRevenue - $previousMonthRevenue) / $previousMonthRevenue) * 100;
+            }
         }
 
         return view('dashboard.index', compact(
@@ -77,6 +112,18 @@ class DashboardController extends Controller
             'totalSalesValue',
             'recentQuotes',
             'recentSales',
+            'overdueCount',
+            'overdueAmount',
+            'dueTodayCount',
+            'dueTodayAmount',
+            'dueNext7DaysCount',
+            'dueNext7DaysAmount',
+            'accumulatedOverdueAmount',
+            'averageReceivableAmount',
+            'averageSaleAmount',
+            'currentMonthRevenue',
+            'previousMonthRevenue',
+            'monthlyChangePercent',
         ));
     }
 }

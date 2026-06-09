@@ -27,6 +27,15 @@ class Quote extends Model
         'items_amount',
         'total_amount',
         'converted_at',
+        'carrier',
+        'freight_price',
+        'freight_type',
+        'volume',
+        'weight_gross',
+        'weight_net',
+        'delivery_deadline',
+        'warranty',
+        'validity',
     ];
 
     protected $casts = [
@@ -36,6 +45,11 @@ class Quote extends Model
         'items_amount'    => 'decimal:2',
         'total_amount'    => 'decimal:2',
         'converted_at'    => 'datetime',
+        'freight_price'   => 'decimal:2',
+        'freight_type'    => 'integer',
+        'volume'          => 'decimal:4',
+        'weight_gross'    => 'decimal:4',
+        'weight_net'      => 'decimal:4',
     ];
 
     // ─── Relationships ────────────────────────────────────────────────────────

@@ -27,7 +27,10 @@
         
         <div class="flex gap-2">
             <a href="{{ route('quotes.pdf', $quote) }}" class="btn btn-secondary" style="border-radius: 8px;" target="_blank">
-                <x-heroicon-o-document-arrow-down class="w-4 h-4"/> PDF
+                <x-heroicon-o-document-arrow-down class="w-4 h-4"/> PDF Cliente
+            </a>
+            <a href="{{ route('quotes.pdf', [$quote, 'mode' => 'operational']) }}" class="btn btn-secondary" style="border-radius: 8px;" target="_blank">
+                <x-heroicon-o-wrench class="w-4 h-4"/> Ficha de Campo
             </a>
             @if(!$quote->isConverted())
                 @can('update', $quote)
@@ -52,10 +55,10 @@
                         Este orçamento foi processado em <strong>{{ $quote->converted_at->format('d/m/Y \à\s H:i') }}</strong>.
                         @if($quote->type === 'sale')
                             O faturamento comercial gerou a 
-                            <a href="{{ route('sales.index') }}" style="font-weight: 700; text-decoration: underline; color: #4c1d95;">Venda Comercial</a>.
+                            <a href="{{ route('sales.show', $quote->sale?->id ?? '') }}" style="font-weight: 700; text-decoration: underline; color: #4c1d95;">Venda Comercial</a>.
                         @else
                             A execução técnica gerou uma 
-                            <a href="{{ route('service-orders.index') }}" style="font-weight: 700; text-decoration: underline; color: #4c1d95;">Ordem de Serviço</a>.
+                            <a href="{{ route('service-orders.show', $quote->serviceOrder?->id ?? '') }}" style="font-weight: 700; text-decoration: underline; color: #4c1d95;">Ordem de Serviço</a>.
                         @endif
                     </p>
                 </div>
@@ -192,6 +195,62 @@
                             <span>Valor Total</span>
                             <span style="color: #4f46e5; font-size: 18px;">R$ {{ number_format($quote->total_amount, 2, ',', '.') }}</span>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dados de Logística & Prazos -->
+            <div class="card shadow-sm mb-4" style="border-radius: 12px; border: 1px solid #e2e8f0; padding: 24px;">
+                <h3 style="font-size: 14px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 16px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">Dados de Logística & Prazos</h3>
+                <div class="grid-2">
+                    <div>
+                        <div style="font-size: 12px; color: #64748b; margin-bottom: 2px;">Transportadora</div>
+                        <div style="font-weight: 600; color: #1e293b; font-size: 14px;">{{ $quote->carrier ?: 'Não informada' }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 12px; color: #64748b; margin-bottom: 2px;">Modalidade do Frete</div>
+                        <div style="font-weight: 600; color: #1e293b; font-size: 14px;">
+                            @if($quote->freight_type === 0) Contratação do Frete por conta do Remetente (CIF)
+                            @elseif($quote->freight_type === 1) Contratação do Frete por conta do Destinatário (FOB)
+                            @elseif($quote->freight_type === 2) Contratação do Frete por conta de Terceiros
+                            @elseif($quote->freight_type === 3) Transporte Próprio por conta do Remetente
+                            @elseif($quote->freight_type === 4) Transporte Próprio por conta do Destinatário
+                            @else Sem Frete
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid-3 mt-4">
+                    <div>
+                        <div style="font-size: 12px; color: #64748b; margin-bottom: 2px;">Valor do Frete</div>
+                        <div style="font-weight: 600; color: #1e293b; font-size: 14px;">R$ {{ number_format($quote->freight_price, 2, ',', '.') }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 12px; color: #64748b; margin-bottom: 2px;">Volumes</div>
+                        <div style="font-weight: 600; color: #1e293b; font-size: 14px;">{{ $quote->volume ?: '—' }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 12px; color: #64748b; margin-bottom: 2px;">Peso (Bruto / Líquido)</div>
+                        <div style="font-weight: 600; color: #1e293b; font-size: 14px;">
+                            {{ $quote->weight_gross ? number_format($quote->weight_gross, 4, ',', '.') . ' kg' : '—' }} /
+                            {{ $quote->weight_net ? number_format($quote->weight_net, 4, ',', '.') . ' kg' : '—' }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid-3 mt-4 font-normal">
+                    <div>
+                        <div style="font-size: 12px; color: #64748b; margin-bottom: 2px;">Prazo de Entrega</div>
+                        <div style="font-weight: 600; color: #1e293b; font-size: 14px;">{{ $quote->delivery_deadline ?: '—' }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 12px; color: #64748b; margin-bottom: 2px;">Garantia Comercial</div>
+                        <div style="font-weight: 600; color: #1e293b; font-size: 14px;">{{ $quote->warranty ?: '—' }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 12px; color: #64748b; margin-bottom: 2px;">Validade da Proposta</div>
+                        <div style="font-weight: 600; color: #1e293b; font-size: 14px;">{{ $quote->validity ?: '—' }}</div>
                     </div>
                 </div>
             </div>

@@ -72,6 +72,11 @@ class Client extends Model
         return $this->hasMany(ClientEquipment::class);
     }
 
+    public function receivables(): HasMany
+    {
+        return $this->hasMany(Receivable::class);
+    }
+
     public function primaryContact(): HasOne
     {
         return $this->hasOne(ClientContact::class)->where('is_primary', true);

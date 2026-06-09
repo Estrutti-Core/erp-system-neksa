@@ -1,4 +1,5 @@
 <?php
+// erp/database/seeders/MockDataSeeder.php
 
 namespace Database\Seeders;
 
@@ -10,9 +11,19 @@ use App\Models\Quote;
 use App\Models\QuoteItem;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\FinancialAccount;
+use App\Models\FinancialAccountType;
+use App\Models\Receivable;
+use App\Models\ReceivableInstallment;
+use App\Models\SalePayment;
+use App\Models\ServiceOrder;
+use App\Models\ServiceOrderPayment;
+use App\Models\Company;
+use App\Models\User;
 use App\Enums\ProductType;
 use App\Enums\QuoteStatus;
 use App\Enums\SaleStatus;
+use App\Enums\PaymentMethod;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 
@@ -20,7 +31,61 @@ class MockDataSeeder extends Seeder
 {
     public function run(): void
     {
-        // 1. Seed Products (Produtos Físicos/Peças)
+        // Certificar a existência da Empresa principal
+        $company = Company::first();
+        if (!$company) {
+            $company = Company::create([
+                'id' => 1,
+                'name' => 'Neksa ERP',
+            ]);
+        }
+
+        // Criar Tipos de Contas Financeiras
+        $typeChecking = FinancialAccountType::updateOrCreate(
+            ['slug' => 'checking'],
+            ['name' => 'Conta Corrente']
+        );
+
+        $typeCash = FinancialAccountType::updateOrCreate(
+            ['slug' => 'cash'],
+            ['name' => 'Caixa Físico']
+        );
+
+        // Criar Contas Financeiras com saldos iniciais para movimentações
+        $accItau = FinancialAccount::updateOrCreate(
+            ['name' => 'Itaú Unibanco Corrente'],
+            [
+                'type_id' => $typeChecking->id,
+                'bank_name' => 'Itaú',
+                'agency' => '0123',
+                'account_number' => '45678-9',
+                'balance' => 45200.50,
+                'is_active' => true,
+            ]
+        );
+
+        $accBb = FinancialAccount::updateOrCreate(
+            ['name' => 'Banco do Brasil Corrente'],
+            [
+                'type_id' => $typeChecking->id,
+                'bank_name' => 'Banco do Brasil',
+                'agency' => '3210',
+                'account_number' => '98765-4',
+                'balance' => 12500.00,
+                'is_active' => true,
+            ]
+        );
+
+        $accCaixa = FinancialAccount::updateOrCreate(
+            ['name' => 'Caixa Físico Interno'],
+            [
+                'type_id' => $typeCash->id,
+                'balance' => 1200.00,
+                'is_active' => true,
+            ]
+        );
+
+        // 1. Seed Products (Produtos Físicos/Peças com dados logísticos)
         $productsData = [
             [
                 'name' => 'Roteador MikroTik RB750Gr3',
@@ -38,6 +103,13 @@ class MockDataSeeder extends Seeder
                 'is_active' => true,
                 'type' => ProductType::Product,
                 'is_stock_controlled' => true,
+                'weight_gross' => 0.4500,
+                'weight_net' => 0.3800,
+                'height' => 10.00,
+                'width' => 12.00,
+                'length' => 5.00,
+                'volume' => 0.0006,
+                'logistic_unit' => 'UN',
             ],
             [
                 'name' => 'Switch Gigabit TP-Link 24 Portas TL-SG1024D',
@@ -55,6 +127,13 @@ class MockDataSeeder extends Seeder
                 'is_active' => true,
                 'type' => ProductType::Product,
                 'is_stock_controlled' => true,
+                'weight_gross' => 1.8500,
+                'weight_net' => 1.6000,
+                'height' => 15.00,
+                'width' => 44.00,
+                'length' => 18.00,
+                'volume' => 0.0118,
+                'logistic_unit' => 'UN',
             ],
             [
                 'name' => 'Cabo de Rede Nexans Cat6 U/UTP 305m',
@@ -72,6 +151,13 @@ class MockDataSeeder extends Seeder
                 'is_active' => true,
                 'type' => ProductType::Product,
                 'is_stock_controlled' => true,
+                'weight_gross' => 11.2000,
+                'weight_net' => 10.5000,
+                'height' => 35.00,
+                'width' => 35.00,
+                'length' => 35.00,
+                'volume' => 0.0428,
+                'logistic_unit' => 'CX',
             ],
             [
                 'name' => 'Conector RJ45 Macho Cat6 Blindado (Pacote 100 un)',
@@ -89,6 +175,13 @@ class MockDataSeeder extends Seeder
                 'is_active' => true,
                 'type' => ProductType::Product,
                 'is_stock_controlled' => true,
+                'weight_gross' => 0.2000,
+                'weight_net' => 0.1800,
+                'height' => 5.00,
+                'width' => 8.00,
+                'length' => 12.00,
+                'volume' => 0.0004,
+                'logistic_unit' => 'PCT',
             ],
             [
                 'name' => 'Access Point Ubiquiti UniFi U6+ Dual-Band Wi-Fi 6',
@@ -106,40 +199,13 @@ class MockDataSeeder extends Seeder
                 'is_active' => true,
                 'type' => ProductType::Product,
                 'is_stock_controlled' => true,
-            ],
-            [
-                'name' => 'SSD Kingston KC3000 1TB M.2 NVMe',
-                'description' => 'Unidade de estado sólido interna PCIe 4.0 NVMe de alta velocidade',
-                'sku' => 'PROD-KNG-KC3000-1T',
-                'barcode' => '7891234560066',
-                'ncm' => '85235110',
-                'cfop' => '5102',
-                'cst' => '40',
-                'commercial_unit' => 'UN',
-                'taxable_unit' => 'UN',
-                'cost_price' => 320.00,
-                'sale_price' => 580.00,
-                'stock' => 20.000,
-                'is_active' => true,
-                'type' => ProductType::Product,
-                'is_stock_controlled' => true,
-            ],
-            [
-                'name' => 'Memória RAM Kingston Fury Beast 16GB DDR4 3200MHz',
-                'description' => 'Módulo de memória RAM de alto desempenho para servidores e desktops',
-                'sku' => 'PROD-KNG-16GD4',
-                'barcode' => '7891234560073',
-                'ncm' => '84733042',
-                'cfop' => '5102',
-                'cst' => '40',
-                'commercial_unit' => 'UN',
-                'taxable_unit' => 'UN',
-                'cost_price' => 180.00,
-                'sale_price' => 320.00,
-                'stock' => 30.000,
-                'is_active' => true,
-                'type' => ProductType::Product,
-                'is_stock_controlled' => true,
+                'weight_gross' => 0.6000,
+                'weight_net' => 0.5100,
+                'height' => 18.00,
+                'width' => 18.00,
+                'length' => 6.00,
+                'volume' => 0.0019,
+                'logistic_unit' => 'UN',
             ]
         ];
 
@@ -197,38 +263,6 @@ class MockDataSeeder extends Seeder
                 'inss_retention_rate' => 0.00,
                 'municipal_service_code' => '01.02',
                 'is_active' => true,
-            ],
-            [
-                'name' => 'Instalação e Configuração de Câmeras CFTV IP',
-                'description' => 'Instalação física de câmeras IP, configuração no gravador NVR e liberação de acesso externo',
-                'sku' => 'SERV-INST-CFTV',
-                'price' => 180.00,
-                'cfop' => '5933',
-                'cst' => '01',
-                'iss_rate' => 4.00,
-                'iss_withheld' => false,
-                'pis_retention_rate' => 0.65,
-                'cofins_retention_rate' => 3.00,
-                'csll_retention_rate' => 1.00,
-                'inss_retention_rate' => 1.50,
-                'municipal_service_code' => '14.02',
-                'is_active' => true,
-            ],
-            [
-                'name' => 'Manutenção Preventiva de Servidor Físico',
-                'description' => 'Limpeza interna do servidor, teste de backup, verificação de integridade de discos/RAID e atualização de firmware',
-                'sku' => 'SERV-MANT-SERV',
-                'price' => 400.00,
-                'cfop' => '5933',
-                'cst' => '01',
-                'iss_rate' => 5.00,
-                'iss_withheld' => false,
-                'pis_retention_rate' => 0.65,
-                'cofins_retention_rate' => 3.00,
-                'csll_retention_rate' => 1.00,
-                'inss_retention_rate' => 0.00,
-                'municipal_service_code' => '01.03',
-                'is_active' => true,
             ]
         ];
 
@@ -237,52 +271,15 @@ class MockDataSeeder extends Seeder
             $services[] = Service::updateOrCreate(['sku' => $data['sku']], $data);
         }
 
-        // 3. Fetch seeded Clients to associate with equipments, quotes and sales
+        // 3. Clientes
         $clients = Client::with('addresses')->get();
         if ($clients->isEmpty()) {
             return; // Safety check
         }
 
-        // Associate Client Equipments for active clients
-        $equipmentsData = [
-            'Supermercado Bom Preço Ltda' => [
-                ['name' => 'Servidor Dell PowerEdge R440', 'brand' => 'Dell', 'model' => 'R440', 'serial_number' => 'DEL-XP99-BP1', 'notes' => 'Servidor de banco de dados e caixa principal'],
-                ['name' => 'Roteador Cisco RV340', 'brand' => 'Cisco', 'model' => 'RV340-K9', 'serial_number' => 'CS-8877-BP2', 'notes' => 'Firewall da rede interna e VPN'],
-            ],
-            'Clínica Saúde Total' => [
-                ['name' => 'Central Telefônica IP Grandstream', 'brand' => 'Grandstream', 'model' => 'UCM6202', 'serial_number' => 'GS-6677-ST1', 'notes' => 'Responsável por toda a telefonia e ramais da clínica'],
-                ['name' => 'NVR Intelbras 32 Canais', 'brand' => 'Intelbras', 'model' => 'NVD 7132', 'serial_number' => 'IB-5544-ST2', 'notes' => 'Gravador de câmeras da portaria e consultórios'],
-            ],
-            'Hotel Grand Palace' => [
-                ['name' => 'Switch Core HP Aruba 24p', 'brand' => 'HP Aruba', 'model' => '2530-24G', 'serial_number' => 'AR-4433-GP1', 'notes' => 'Switch central do rack do hotel'],
-                ['name' => 'Controladora Wi-Fi UniFi Cloud Key Gen2', 'brand' => 'Ubiquiti', 'model' => 'UCK-G2-PLUS', 'serial_number' => 'UB-3322-GP2', 'notes' => 'Gerenciamento dos access points dos quartos'],
-            ],
-            'Padaria Pão Quente' => [
-                ['name' => 'Balancete Digital Integrado Toledo', 'brand' => 'Toledo', 'model' => 'Prix 5 Plus', 'serial_number' => 'TL-2211-PQ1', 'notes' => 'Balança de frios com integração ao PDV'],
-            ]
-        ];
-
-        foreach ($equipmentsData as $clientName => $eqs) {
-            $client = $clients->firstWhere('name', $clientName);
-            if ($client) {
-                foreach ($eqs as $eq) {
-                    ClientEquipment::updateOrCreate(
-                        ['client_id' => $client->id, 'serial_number' => $eq['serial_number']],
-                        [
-                            'name' => $eq['name'],
-                            'brand' => $eq['brand'],
-                            'model' => $eq['model'],
-                            'notes' => $eq['notes'],
-                        ]
-                    );
-                }
-            }
-        }
-
         // 4. Seed Quotes (Orçamentos)
         $quoteClients = $clients->take(4);
         
-        // Quote 1: Draft - Mixed Products and Services
         $c1 = $quoteClients->get(0);
         $addr1 = $c1->addresses->first();
         $q1 = Quote::create([
@@ -297,7 +294,7 @@ class MockDataSeeder extends Seeder
 
         QuoteItem::create([
             'quote_id' => $q1->id,
-            'product_id' => $products[4]->id, // Ubiquiti AP
+            'product_id' => $products[4]->id,
             'description' => $products[4]->name,
             'quantity' => 2.000,
             'unit' => $products[4]->commercial_unit,
@@ -305,191 +302,179 @@ class MockDataSeeder extends Seeder
             'type' => ProductType::Product,
         ]);
 
-        QuoteItem::create([
-            'quote_id' => $q1->id,
-            'product_id' => $products[2]->id, // Nexans Cable
-            'description' => $products[2]->name,
-            'quantity' => 1.000,
-            'unit' => $products[2]->commercial_unit,
-            'unit_price' => $products[2]->sale_price,
-            'type' => ProductType::Product,
-        ]);
-
-        QuoteItem::create([
-            'quote_id' => $q1->id,
-            'service_id' => $services[0]->id, // Roteador config
-            'description' => $services[0]->name,
-            'quantity' => 1.000,
-            'unit' => 'UN',
-            'unit_price' => $services[0]->price,
-            'type' => ProductType::Service,
-        ]);
-
         $q1->recalculateTotals();
 
-        // Quote 2: Sent - Services Only
-        $c2 = $quoteClients->get(1);
-        $addr2 = $c2->addresses->first();
-        $q2 = Quote::create([
-            'client_id' => $c2->id,
-            'client_address_id' => $addr2?->id,
-            'status' => QuoteStatus::Sent,
-            'valid_until' => Carbon::now()->addDays(10),
-            'notes' => 'Consultoria técnica para reestruturação física do rack principal de telecomunicações.',
-            'internal_notes' => 'Enviado por e-mail no dia de ontem.',
-            'discount_amount' => 0.00,
-        ]);
-
-        QuoteItem::create([
-            'quote_id' => $q2->id,
-            'service_id' => $services[2]->id, // Consultoria
-            'description' => $services[2]->name,
-            'quantity' => 5.000, // 5 horas
-            'unit' => 'UN',
-            'unit_price' => $services[2]->price,
-            'type' => ProductType::Service,
-        ]);
-
-        QuoteItem::create([
-            'quote_id' => $q2->id,
-            'service_id' => $services[4]->id, // Preventiva Servidor
-            'description' => $services[4]->name,
-            'quantity' => 1.000,
-            'unit' => 'UN',
-            'unit_price' => $services[4]->price,
-            'type' => ProductType::Service,
-        ]);
-
-        $q2->recalculateTotals();
-
-        // Quote 3: Approved - Products Only (Ready to convert to Sale)
-        $c3 = $quoteClients->get(2);
-        $addr3 = $c3->addresses->first();
-        $q3 = Quote::create([
-            'client_id' => $c3->id,
-            'client_address_id' => $addr3?->id,
-            'status' => QuoteStatus::Approved,
-            'valid_until' => Carbon::now()->addDays(5),
-            'notes' => 'Aquisição de memórias e SSDs para upgrade das estações de trabalho da recepção.',
-            'internal_notes' => 'Aprovado pelo gerente de compras.',
-            'discount_amount' => 100.00,
-        ]);
-
-        QuoteItem::create([
-            'quote_id' => $q3->id,
-            'product_id' => $products[5]->id, // SSD
-            'description' => $products[5]->name,
-            'quantity' => 4.000,
-            'unit' => $products[5]->commercial_unit,
-            'unit_price' => $products[5]->sale_price,
-            'type' => ProductType::Product,
-        ]);
-
-        QuoteItem::create([
-            'quote_id' => $q3->id,
-            'product_id' => $products[6]->id, // RAM
-            'description' => $products[6]->name,
-            'quantity' => 8.000,
-            'unit' => $products[6]->commercial_unit,
-            'unit_price' => $products[6]->sale_price,
-            'type' => ProductType::Product,
-        ]);
-
-        $q3->recalculateTotals();
-
-        // Quote 4: Converted - Services Only
-        $c4 = $quoteClients->get(3);
-        $addr4 = $c4->addresses->first();
-        $q4 = Quote::create([
-            'client_id' => $c4->id,
-            'client_address_id' => $addr4?->id,
-            'status' => QuoteStatus::Converted,
-            'valid_until' => Carbon::now()->subDays(2),
-            'notes' => 'Instalação de pontos de rede adicionais para novas gavetas de atendimento.',
-            'internal_notes' => 'Convertido com sucesso em Ordem de Serviço.',
-            'discount_amount' => 0.00,
-            'converted_at' => Carbon::now()->subDays(1),
-        ]);
-
-        QuoteItem::create([
-            'quote_id' => $q4->id,
-            'service_id' => $services[1]->id, // Instalação Cabo
-            'description' => $services[1]->name,
-            'quantity' => 8.000, // 8 pontos
-            'unit' => 'UN',
-            'unit_price' => $services[1]->price,
-            'type' => ProductType::Service,
-        ]);
-
-        $q4->recalculateTotals();
-
-        // 5. Seed Sales (Vendas Comerciais)
-        // Sale 1: Pending - Linked to Quote 3 (Approved Products Only Quote)
+        // 5. Seed Sales
+        // Sale 1: Pending (Sem pagamento)
         $s1 = Sale::create([
-            'client_id' => $q3->client_id,
-            'client_address_id' => $q3->client_address_id,
-            'quote_id' => $q3->id,
+            'client_id' => $c1->id,
+            'client_address_id' => $addr1?->id,
             'status' => SaleStatus::Pending,
-            'discount_amount' => $q3->discount_amount,
-            'items_amount' => $q3->items_amount,
-            'total_amount' => $q3->total_amount,
-            'notes' => 'Venda comercial gerada através do orçamento ' . $q3->code . '.',
+            'discount_amount' => 0.00,
+            'items_amount' => 1200.00,
+            'total_amount' => 1200.00,
+            'notes' => 'Venda de switches pendente de faturamento.',
+            'carrier' => 'Braspress Transportes',
+            'freight_price' => 120.00,
+            'volume' => 2.00,
+            'weight_gross' => 3.700,
+            'weight_net' => 3.200,
+            'freight_type' => 1,
+            'delivery_deadline' => '5 dias úteis',
+            'warranty' => '1 ano contra defeito de fabricação',
+            'validity' => '10 dias',
         ]);
 
-        foreach ($q3->items as $item) {
-            SaleItem::create([
-                'sale_id' => $s1->id,
-                'product_id' => $item->product_id,
-                'description' => $item->description,
-                'quantity' => $item->quantity,
-                'unit' => $item->unit,
-                'unit_price' => $item->unit_price,
-                'total_price' => $item->total_price,
-            ]);
-        }
+        SaleItem::create([
+            'sale_id' => $s1->id,
+            'product_id' => $products[1]->id,
+            'description' => $products[1]->name,
+            'quantity' => 2.000,
+            'unit' => $products[1]->commercial_unit,
+            'unit_price' => 600.00,
+            'total_price' => 1200.00,
+        ]);
 
-        // Sale 2: Completed (Faturada) - Not linked to any Quote, direct sale
+        $s1->recalculateTotals();
+
+        // Sale 2: Completed (Faturada + Recebível Gerado + Parcelas com baixas)
         $s2 = Sale::create([
             'client_id' => $c1->id,
             'client_address_id' => $addr1?->id,
             'status' => SaleStatus::Completed,
-            'discount_amount' => 0.00,
-            'items_amount' => 0.00,
-            'total_amount' => 0.00,
-            'notes' => 'Venda direta de switch MikroTik de emergência.',
+            'discount_amount' => 50.00,
+            'items_amount' => 1190.00,
+            'total_amount' => 1140.00,
+            'notes' => 'Venda faturada de AP corporativo.',
+            'carrier' => 'Correios PAC',
+            'freight_price' => 30.00,
+            'volume' => 1.00,
+            'weight_gross' => 0.600,
+            'weight_net' => 0.510,
+            'freight_type' => 0,
+            'delivery_deadline' => '3 dias úteis',
+            'warranty' => '2 anos direto com fabricante',
+            'validity' => 'Expirada',
         ]);
 
         SaleItem::create([
             'sale_id' => $s2->id,
-            'product_id' => $products[0]->id, // MikroTik Router
-            'description' => $products[0]->name,
+            'product_id' => $products[4]->id,
+            'description' => $products[4]->name,
             'quantity' => 1.000,
-            'unit' => $products[0]->commercial_unit,
-            'unit_price' => $products[0]->sale_price,
+            'unit' => $products[4]->commercial_unit,
+            'unit_price' => 1190.00,
+            'total_price' => 1190.00,
         ]);
 
         $s2->recalculateTotals();
 
-        // Sale 3: Cancelled - Linked to Quote 1 (Draft simulation converted & cancelled)
-        $s3 = Sale::create([
-            'client_id' => $c2->id,
-            'client_address_id' => $addr2?->id,
-            'status' => SaleStatus::Cancelled,
-            'discount_amount' => 0.00,
-            'items_amount' => 0.00,
-            'total_amount' => 0.00,
-            'notes' => 'Venda cancelada por solicitação do financeiro do cliente.',
+        // Registrar pagamentos no SalePayment
+        SalePayment::create([
+            'sale_id' => $s2->id,
+            'payment_method' => PaymentMethod::Boleto->value,
+            'amount' => 1140.00,
+            'installments_count' => 2,
+            'first_due_date' => Carbon::now()->addDays(5),
+            'financial_account_id' => $accBb->id,
+            'notes' => 'Dividido em 2 boletos para o financeiro do cliente.',
         ]);
 
-        SaleItem::create([
-            'sale_id' => $s3->id,
-            'product_id' => $products[1]->id, // Switch TP Link
-            'description' => $products[1]->name,
-            'quantity' => 1.000,
-            'unit' => $products[1]->commercial_unit,
-            'unit_price' => $products[1]->sale_price,
+        // Criar o recebível correspondente no contas a receber
+        $receivable = Receivable::create([
+            'company_id' => $company->id,
+            'client_id' => $c1->id,
+            'code' => 'REC-SALE-' . $s2->id,
+            'source_type' => Sale::class,
+            'source_id' => $s2->id,
+            'source_snapshot' => json_encode([
+                'client_name' => $c1->name,
+                'total_amount' => $s2->total_amount,
+            ]),
+            'competence_date' => Carbon::now(),
+            'description' => 'Faturamento Venda ' . $s2->code,
+            'total_amount' => 1140.00,
+            'net_amount' => 1140.00,
+            'status' => 'pending',
+            'notes' => 'Gerado automaticamente pelo seeder.',
         ]);
 
-        $s3->recalculateTotals();
+        // Parcela 1: Paga
+        ReceivableInstallment::create([
+            'receivable_id' => $receivable->id,
+            'installment_number' => 1,
+            'due_date' => Carbon::now()->subDays(2),
+            'amount' => 570.00,
+            'net_amount' => 570.00,
+            'paid_amount' => 570.00,
+            'paid_at' => Carbon::now()->subDays(2),
+            'payment_method' => PaymentMethod::Boleto->value,
+            'status' => 'paid',
+            'financial_account_id' => $accBb->id,
+            'user_id' => 1,
+        ]);
+
+        // Parcela 2: Pendente (Para baixa inline!)
+        ReceivableInstallment::create([
+            'receivable_id' => $receivable->id,
+            'installment_number' => 2,
+            'due_date' => Carbon::now()->addDays(28),
+            'amount' => 570.00,
+            'net_amount' => 570.00,
+            'paid_amount' => 0.00,
+            'status' => 'pending',
+            'financial_account_id' => $accBb->id,
+        ]);
+
+        // 6. Seed Ordens de Serviço Concluídas com Financeiro associado
+        $completedSo = ServiceOrder::whereHas('status', function($q) {
+            $q->where('slug', 'completed');
+        })->get();
+
+        foreach ($completedSo as $so) {
+            // Se já não tiver pagamentos, cria as formas e recebíveis correspondentes!
+            if ($so->payments->isEmpty()) {
+                ServiceOrderPayment::create([
+                    'service_order_id' => $so->id,
+                    'payment_method' => PaymentMethod::Pix->value,
+                    'amount' => $so->total_amount,
+                    'installments_count' => 1,
+                    'first_due_date' => $so->completed_at ?? Carbon::now(),
+                    'financial_account_id' => $accItau->id,
+                    'notes' => 'Faturado via Pix na conclusão da OS.',
+                ]);
+
+                // Criar recebível correspondente
+                $recSo = Receivable::create([
+                    'company_id' => $company->id,
+                    'client_id' => $so->client_id,
+                    'code' => 'REC-OS-' . $so->id,
+                    'source_type' => ServiceOrder::class,
+                    'source_id' => $so->id,
+                    'source_snapshot' => json_encode([
+                        'client_name' => $so->client->name,
+                        'total_amount' => $so->total_amount,
+                    ]),
+                    'competence_date' => $so->completed_at ?? Carbon::now(),
+                    'description' => 'Faturamento OS ' . $so->code,
+                    'total_amount' => $so->total_amount,
+                    'net_amount' => $so->total_amount,
+                    'status' => 'pending',
+                    'notes' => 'Semeado automaticamente para a OS.',
+                ]);
+
+                // Parcela pendente para demonstração de baixa inline
+                ReceivableInstallment::create([
+                    'receivable_id' => $recSo->id,
+                    'installment_number' => 1,
+                    'due_date' => Carbon::now()->addDays(5),
+                    'amount' => $so->total_amount,
+                    'net_amount' => $so->total_amount,
+                    'paid_amount' => 0.00,
+                    'status' => 'pending',
+                    'financial_account_id' => $accItau->id,
+                ]);
+            }
+        }
     }
 }

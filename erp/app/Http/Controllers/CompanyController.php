@@ -23,11 +23,13 @@ class CompanyController extends Controller
             'email' => 'nullable|email|max:255',
             'address' => 'nullable|string|max:255',
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,svg|max:2048',
+            'allow_negative_stock' => 'nullable|boolean',
         ]);
 
         $company = Company::first() ?? new Company();
         
         $data = $request->only(['name', 'document', 'phone', 'email', 'address']);
+        $data['allow_negative_stock'] = $request->boolean('allow_negative_stock');
 
         if ($request->hasFile('logo')) {
             if ($company->logo_path) {

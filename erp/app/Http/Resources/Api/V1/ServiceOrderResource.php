@@ -12,9 +12,9 @@ class ServiceOrderResource extends JsonResource
         return [
             'id'                  => $this->id,
             'code'                => $this->code,
-            'status'              => $this->status->value,
-            'status_label'        => $this->status->label(),
-            'status_color'        => $this->status->color(),
+            'status'              => $this->status->slug,
+            'status_label'        => $this->status->name,
+            'status_color'        => $this->status->color,
             'priority'            => $this->priority->value,
             'priority_label'      => $this->priority->label(),
             'description'         => $this->description,
@@ -46,6 +46,14 @@ class ServiceOrderResource extends JsonResource
                 'longitude'    => $this->clientAddress->longitude,
             ] : null),
 
+            'equipment' => $this->whenLoaded('equipment', fn () => $this->equipment ? [
+                'id'            => $this->equipment->id,
+                'name'          => $this->equipment->name,
+                'brand'         => $this->equipment->brand,
+                'model'         => $this->equipment->model,
+                'serial_number' => $this->equipment->serial_number,
+            ] : null),
+
             'technician' => $this->whenLoaded('technician', fn () => $this->technician ? [
                 'id'   => $this->technician->id,
                 'name' => $this->technician->name,
@@ -64,7 +72,57 @@ class ServiceOrderResource extends JsonResource
             ),
 
             'has_signature' => $this->whenLoaded('signature', fn () => $this->signature !== null),
-            'photos_count'  => $this->whenLoaded('photos', fn () => $this->photos->count()),
+            'signature'     => $this->whenLoaded('signature', fn () => $this->signature ? [
+                'signer_name'      => $this->signature->signer_name,
+                'signer_document'  => $this->signature->signer_document,
+                'url'              => $this->signature->url,
+                'signed_at'        => $this->signature->signed_at->toIso8601String(),
+            ] : null),
+
+            'attachments' => $this->whenLoaded('attachments', fn () =>
+                $this->attachments->map(fn ($att) => [
+                    'id'            => $att->id,
+                    'original_name' => $att->original_name,
+                    'url'           => $att->url,
+                    'type'          => $att->type,
+                    'caption'       => $att->caption,
+                    'mime_type'     => $att->mime_type,
+                    'size'          => $att->size,
+                ])
+            ),
+
+            'checklists' => $this->whenLoaded('checklists', fn () =>
+                $this->checklists->map(fn ($checklist) => [
+                    'id'          => $checklist->id,
+                    'name'        => $checklist->template->name,
+                    'is_inactive' => (bool) $checklist->is_inactive,
+                    'is_filled'   => $checklist->isFilled(),
+                    'filled_at'   => $checklist->filled_at?->toIso8601String(),
+                    'questions'   => $checklist->instancedQuestions->map(fn ($q) => [
+                        'id'            => $q->id,
+                        'question_text' => $q->question_text,
+                        'question_type' => $q->question_type,
+                        'is_required'   => (bool) $q->is_required,
+                        'options'       => $q->options_json,
+                        'answer'        => $q->answer ? [
+                            'value'      => $q->answer->answer_value,
+                            'photo_url'  => $q->answer->photo_url,
+                        ] : null,
+                    ]),
+                ])
+            ),
+
+            'checkins' => $this->whenLoaded('checkins', fn () =>
+                $this->checkins->map(fn ($ci) => [
+                    'id'         => $ci->id,
+                    'type'       => $ci->type,
+                    'latitude'   => $ci->latitude,
+                    'longitude'  => $ci->longitude,
+                    'notes'      => $ci->notes,
+                    'checked_at' => $ci->checked_at->toIso8601String(),
+                    'user_name'  => $ci->user->name,
+                ])
+            ),
         ];
     }
 }

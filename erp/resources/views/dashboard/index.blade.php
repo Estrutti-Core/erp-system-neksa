@@ -46,6 +46,9 @@
         </div>
     @else
         <!-- Grid Operador/Admin: Visão Comercial e Operacional Completa -->
+        <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2" style="font-size: 12px; margin-bottom: 12px;">
+            <x-heroicon-o-chart-bar class="w-5 h-5 text-gray-400" /> Indicadores Operacionais
+        </h3>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
             <!-- OS Abertas -->
             <div class="stat-card">
@@ -80,6 +83,68 @@
                 </div>
             </div>
         </div>
+
+        <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2" style="font-size: 12px; margin-bottom: 12px;">
+            <x-heroicon-o-banknotes class="w-5 h-5 text-gray-400" /> Indicadores Financeiros e Comerciais de Alto Nível
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            <!-- Contas Vencidas / Inadimplência -->
+            <div class="stat-card" style="border-left: 4px solid #ef4444;">
+                <div class="stat-icon" style="background:#fef2f2"><x-heroicon-o-exclamation-triangle class="w-6 h-6 text-red-600" /></div>
+                <div>
+                    <div class="stat-value text-red-600" style="font-size: 16px; font-weight: 800; font-family: monospace;">R$ {{ number_format($accumulatedOverdueAmount, 2, ',', '.') }}</div>
+                    <div class="stat-label">Inadimplência Acumulada ({{ $overdueCount }} títulos)</div>
+                </div>
+            </div>
+            <!-- Vencendo Hoje -->
+            <div class="stat-card" style="border-left: 4px solid #f59e0b;">
+                <div class="stat-icon" style="background:#fffbeb"><x-heroicon-o-calendar class="w-6 h-6 text-amber-600" /></div>
+                <div>
+                    <div class="stat-value text-amber-600" style="font-size: 16px; font-weight: 800; font-family: monospace;">R$ {{ number_format($dueTodayAmount, 2, ',', '.') }}</div>
+                    <div class="stat-label">Vencendo Hoje ({{ $dueTodayCount }} títulos)</div>
+                </div>
+            </div>
+            <!-- Vencendo nos Próximos 7 Dias -->
+            <div class="stat-card" style="border-left: 4px solid #3b82f6;">
+                <div class="stat-icon" style="background:#eff6ff"><x-heroicon-o-clock class="w-6 h-6 text-blue-600" /></div>
+                <div>
+                    <div class="stat-value text-blue-600" style="font-size: 16px; font-weight: 800; font-family: monospace;">R$ {{ number_format($dueNext7DaysAmount, 2, ',', '.') }}</div>
+                    <div class="stat-label">Vencendo em 7 dias ({{ $dueNext7DaysCount }} títulos)</div>
+                </div>
+            </div>
+            <!-- Comparativo Mensal -->
+            <div class="stat-card" style="border-left: 4px solid #10b981;">
+                <div class="stat-icon" style="background:#ecfdf5"><x-heroicon-o-arrow-trending-up class="w-6 h-6 text-emerald-600" /></div>
+                <div>
+                    <div class="stat-value text-emerald-600" style="font-size: 15px; font-weight: 800; font-family: monospace;">
+                        R$ {{ number_format($currentMonthRevenue, 2, ',', '.') }}
+                        <span class="text-xs font-semibold @if($monthlyChangePercent >= 0) text-green-700 @else text-red-700 @endif" style="font-size: 11px;">
+                            (@if($monthlyChangePercent >= 0)+@endif{{ number_format($monthlyChangePercent, 1) }}%)
+                        </span>
+                    </div>
+                    <div class="stat-label">Receita Mês Atual (vs mês ant.)</div>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            <!-- Ticket Médio Vendas -->
+            <div class="stat-card">
+                <div class="stat-icon" style="background:#f5f3ff"><x-heroicon-o-shopping-bag class="w-6 h-6 text-violet-600" /></div>
+                <div>
+                    <div class="stat-value" style="font-size: 16px; font-weight: 800; color: #4c1d95; font-family: monospace;">R$ {{ number_format($averageSaleAmount, 2, ',', '.') }}</div>
+                    <div class="stat-label">Ticket Médio de Vendas</div>
+                </div>
+            </div>
+            <!-- Ticket Médio Recebível -->
+            <div class="stat-card">
+                <div class="stat-icon" style="background:#ecfdf5"><x-heroicon-o-banknotes class="w-6 h-6 text-emerald-600" /></div>
+                <div>
+                    <div class="stat-value" style="font-size: 16px; font-weight: 800; color: #064e3b; font-family: monospace;">R$ {{ number_format($averageReceivableAmount, 2, ',', '.') }}</div>
+                    <div class="stat-label">Ticket Médio de Recebimento</div>
+                </div>
+            </div>
+        </div>
     @endif
 
     {{-- Layout Principal de Cards --}}
@@ -99,7 +164,7 @@
                             onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
                             <div class="flex justify-between items-center">
                                 <span style="font-size:12px;font-weight:700;color:#64748b">{{ $os->code }}</span>
-                                <span class="badge badge-{{ $os->status->color() }}">{{ $os->status->label() }}</span>
+                                <span class="badge badge-{{ $os->status->color }}">{{ $os->status->name }}</span>
                             </div>
                             <div style="font-size:14px;font-weight:600;margin-top:4px">{{ $os->client->name }}</div>
                             <div class="flex items-center gap-3 mt-1">
@@ -136,7 +201,7 @@
                                     {{ $os->client->name }}</div>
                                 <div class="text-xs text-muted mt-1">{{ $os->code }} · {{ $os->created_at->diffForHumans() }}</div>
                             </div>
-                            <span class="badge badge-{{ $os->status->color() }}">{{ $os->status->label() }}</span>
+                            <span class="badge badge-{{ $os->status->color }}">{{ $os->status->name }}</span>
                         </div>
                     </a>
                 @empty
@@ -166,7 +231,7 @@
                                 onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
                                 <div class="flex justify-between items-center">
                                     <span style="font-size:12px;font-weight:700;color:#64748b">{{ $os->code }}</span>
-                                    <span class="badge badge-{{ $os->status->color() }}">{{ $os->status->label() }}</span>
+                                    <span class="badge badge-{{ $os->status->color }}">{{ $os->status->name }}</span>
                                 </div>
                                 <div style="font-size:14px;font-weight:600;margin-top:4px">{{ $os->client->name }}</div>
                                 <div class="flex items-center gap-3 mt-1">
@@ -203,7 +268,7 @@
                                         {{ $os->client->name }}</div>
                                     <div class="text-xs text-muted mt-1">{{ $os->code }} · {{ $os->created_at->diffForHumans() }}</div>
                                 </div>
-                                <span class="badge badge-{{ $os->status->color() }}">{{ $os->status->label() }}</span>
+                                <span class="badge badge-{{ $os->status->color }}">{{ $os->status->name }}</span>
                             </div>
                         </a>
                     @empty

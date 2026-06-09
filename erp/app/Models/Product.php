@@ -33,6 +33,13 @@ class Product extends Model
         'internal_notes',
         'type',
         'is_stock_controlled',
+        'weight_gross',
+        'weight_net',
+        'height',
+        'width',
+        'length',
+        'volume',
+        'logistic_unit',
     ];
 
     protected $casts = [

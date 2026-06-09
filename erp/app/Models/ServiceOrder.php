@@ -114,9 +114,31 @@ class ServiceOrder extends Model
         return $this->hasMany(ServiceOrderItem::class);
     }
 
+    public function payments(): HasMany
+    {
+        return $this->hasMany(ServiceOrderPayment::class);
+    }
+
     public function attachments(): HasMany
     {
         return $this->hasMany(ServiceOrderAttachment::class);
+    }
+
+    public function receivable()
+    {
+        return $this->morphOne(Receivable::class, 'source');
+    }
+
+    public function installments()
+    {
+        return $this->hasManyThrough(
+            ReceivableInstallment::class,
+            Receivable::class,
+            'source_id',
+            'receivable_id',
+            'id',
+            'id'
+        )->where('receivables.source_type', self::class);
     }
 
     public function checklists(): HasMany

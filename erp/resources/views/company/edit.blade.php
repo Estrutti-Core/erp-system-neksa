@@ -52,6 +52,18 @@
             @error('logo') <div class="invalid-feedback mt-2">{{ $message }}</div> @enderror
         </div>
 
+        <hr class="mb-4" style="border:0; border-top:1px solid #e2e8f0;">
+
+        <div class="mb-4">
+            <div class="flex items-center gap-2">
+                <input type="checkbox" id="allow_negative_stock" name="allow_negative_stock" value="1" style="width:18px; height:18px; cursor:pointer;" {{ old('allow_negative_stock', $company->allow_negative_stock) ? 'checked' : '' }}>
+                <label for="allow_negative_stock" class="form-label mb-0" style="font-weight:600; cursor:pointer;">Permitir Estoque Negativo</label>
+            </div>
+            <p class="text-xs text-gray-500 mt-1" style="color:#64748b; font-size:12px; margin-left: 26px;">
+                Se ativado, o sistema permitirá saídas de estoque mesmo se o saldo atual do produto for insuficiente. Recomendado apenas para ajustes operacionais flexíveis.
+            </p>
+        </div>
+
         <div class="flex justify-end gap-3 mt-6">
             <a href="{{ route('dashboard') }}" class="btn btn-secondary">Cancelar</a>
             <button type="submit" class="btn btn-primary"><x-heroicon-o-check class="w-4 h-4"/> Salvar Configurações</button>

@@ -65,10 +65,7 @@ class FiscalSummaryService
         ];
     }
 
-    /**
-     * Gera o PDF da OS para download/impressão.
-     */
-    public function generatePdf(ServiceOrder $serviceOrder): \Illuminate\Http\Response
+    public function generatePdf(ServiceOrder $serviceOrder, string $mode = 'technical'): Response
     {
         $data = $this->generate($serviceOrder);
 
@@ -80,14 +77,23 @@ class FiscalSummaryService
             'attachments' => fn($q) => $q->where(fn($q2) => $q2->where('mime_type', 'like', 'image/%')),
         ]);
 
-        $pdf = Pdf::loadView('pdf.service-order', [
-            'serviceOrder' => $serviceOrder,
-            'fiscal'       => $data,
-        ])->setPaper('a4');
+        if ($mode === 'receipt') {
+            $pdf = Pdf::loadView('pdf.service-order_receipt', [
+                'serviceOrder' => $serviceOrder,
+                'fiscal'       => $data,
+            ])->setPaper('a4');
+            $docType = 'RECIBO';
+        } else {
+            $pdf = Pdf::loadView('pdf.service-order', [
+                'serviceOrder' => $serviceOrder,
+                'fiscal'       => $data,
+            ])->setPaper('a4');
+            $docType = 'OS';
+        }
 
         $clientName = \Illuminate\Support\Str::upper(\Illuminate\Support\Str::slug($serviceOrder->client->name));
         $number     = preg_replace('/^OS-/', '', $serviceOrder->code);
-        $filename   = "{$clientName}-OS-{$number}.pdf";
+        $filename   = "{$clientName}-{$docType}-{$number}.pdf";
 
         return $pdf->stream($filename);
     }

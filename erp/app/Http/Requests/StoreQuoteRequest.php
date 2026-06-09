@@ -25,6 +25,17 @@ class StoreQuoteRequest extends FormRequest
             'notes'              => ['nullable', 'string'],
             'internal_notes'     => ['nullable', 'string'],
             
+            // Logística
+            'carrier'            => ['nullable', 'string', 'max:255'],
+            'freight_price'      => ['nullable', 'numeric', 'min:0'],
+            'freight_type'       => ['nullable', 'integer'],
+            'volume'             => ['nullable', 'numeric', 'min:0'],
+            'weight_gross'       => ['nullable', 'numeric', 'min:0'],
+            'weight_net'         => ['nullable', 'numeric', 'min:0'],
+            'delivery_deadline'  => ['nullable', 'string', 'max:255'],
+            'warranty'           => ['nullable', 'string', 'max:255'],
+            'validity'           => ['nullable', 'string', 'max:255'],
+            
             // Itens do Orçamento
             'items'              => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['nullable', 'required_without:items.*.service_id', 'exists:products,id'],
@@ -70,6 +81,10 @@ class StoreQuoteRequest extends FormRequest
         $this->merge([
             'items'           => $cleanedItems,
             'discount_amount' => $this->discount_amount ? (float) str_replace(',', '.', str_replace('.', '', $this->discount_amount)) : 0,
+            'freight_price'   => $this->freight_price ? (float) str_replace(',', '.', str_replace('.', '', $this->freight_price)) : 0,
+            'volume'          => $this->volume ? (float) str_replace(',', '.', str_replace('.', '', $this->volume)) : null,
+            'weight_gross'    => $this->weight_gross ? (float) str_replace(',', '.', str_replace('.', '', $this->weight_gross)) : null,
+            'weight_net'      => $this->weight_net ? (float) str_replace(',', '.', str_replace('.', '', $this->weight_net)) : null,
         ]);
     }
 }

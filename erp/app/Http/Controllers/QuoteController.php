@@ -56,6 +56,15 @@ class QuoteController extends Controller
                 'notes'             => $request->notes,
                 'internal_notes'    => $request->internal_notes,
                 'discount_amount'   => $request->discount_amount ?? 0,
+                'carrier'           => $request->carrier,
+                'freight_price'     => $request->freight_price ?? 0,
+                'freight_type'      => $request->freight_type ?? 9,
+                'volume'            => $request->volume,
+                'weight_gross'      => $request->weight_gross,
+                'weight_net'        => $request->weight_net,
+                'delivery_deadline' => $request->delivery_deadline,
+                'warranty'          => $request->warranty,
+                'validity'          => $request->validity,
             ]);
 
             foreach ($request->items as $item) {
@@ -119,6 +128,15 @@ class QuoteController extends Controller
                 'notes'             => $request->notes,
                 'internal_notes'    => $request->internal_notes,
                 'discount_amount'   => $request->discount_amount ?? 0,
+                'carrier'           => $request->carrier,
+                'freight_price'     => $request->freight_price ?? 0,
+                'freight_type'      => $request->freight_type ?? 9,
+                'volume'            => $request->volume,
+                'weight_gross'      => $request->weight_gross,
+                'weight_net'        => $request->weight_net,
+                'delivery_deadline' => $request->delivery_deadline,
+                'warranty'          => $request->warranty,
+                'validity'          => $request->validity,
             ]);
 
             // Remover itens antigos e reinserir
@@ -210,7 +228,7 @@ class QuoteController extends Controller
      */
     public function searchClients(Request $request): JsonResponse
     {
-        $term = $request->get('q', '');
+        $term = $request->input('q', '');
         
         $clients = Client::query()
             ->active()
@@ -231,7 +249,7 @@ class QuoteController extends Controller
      */
     public function searchItems(Request $request): JsonResponse
     {
-        $term = $request->get('q', '');
+        $term = $request->input('q', '');
 
         $products = \App\Models\Product::productsOnly()
             ->active()
@@ -258,7 +276,7 @@ class QuoteController extends Controller
                 'id' => $s->id,
                 'name' => $s->name,
                 'sku' => $s->sku,
-                'sale_price' => number_format($s->price, 2, ',', '.'),
+                'sale_price' => number_format((float) $s->price, 2, ',', '.'),
                 'sale_price_raw' => $s->price,
                 'unit' => 'un',
                 'type' => 'service',
@@ -268,20 +286,25 @@ class QuoteController extends Controller
         return response()->json($products->concat($services));
     }
 
-    /**
-     * Gera o PDF do Orçamento.
-     */
-    public function pdf(Quote $quote): \Illuminate\Http\Response
+    public function pdf(Quote $quote, Request $request): \Illuminate\Http\Response
     {
         $this->authorize('view', $quote);
 
-        $quote->load(['client', 'clientAddress', 'items.product', 'items.service']);
+        $quote->load(['client', 'clientAddress', 'items.product', 'items.service', 'equipment']);
 
-        $pdf = Pdf::loadView('pdf.quote', compact('quote'))->setPaper('a4');
+        $mode = $request->query('mode', 'client');
+
+        if ($mode === 'operational') {
+            $pdf = Pdf::loadView('pdf.quote_operational', compact('quote'))->setPaper('a4');
+            $docType = 'FICHA-DE-CAMPO';
+        } else {
+            $pdf = Pdf::loadView('pdf.quote', compact('quote'))->setPaper('a4');
+            $docType = 'ORC';
+        }
 
         $clientName = \Illuminate\Support\Str::upper(\Illuminate\Support\Str::slug($quote->client->name));
         $number = preg_replace('/^ORC-/', '', $quote->code);
-        $filename = "{$clientName}-ORC-{$number}.pdf";
+        $filename = "{$clientName}-{$docType}-{$number}.pdf";
 
         return $pdf->stream($filename);
     }

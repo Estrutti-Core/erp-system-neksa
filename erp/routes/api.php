@@ -16,6 +16,9 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
     Route::get('/service-orders/{serviceOrder}', [ServiceOrderController::class, 'show']);
     Route::put('/service-orders/{serviceOrder}/status', [ServiceOrderController::class, 'updateStatus']);
     Route::post('/service-orders/{serviceOrder}/checkin', [ServiceOrderController::class, 'checkIn']);
+    Route::post('/service-orders/{serviceOrder}/signature', [ServiceOrderController::class, 'signature']);
+    Route::post('/service-orders/{serviceOrder}/attachments', [ServiceOrderController::class, 'uploadAttachments']);
+    Route::post('/service-orders/{serviceOrder}/checklists/{checklist}/fill', [ServiceOrderController::class, 'fillChecklist']);
 
     // Clientes
     Route::get('/clients', [ClientController::class, 'index']);

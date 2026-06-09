@@ -1,12 +1,13 @@
 @extends('layouts.app')
-@section('title', $serviceOrder->code)
+@section('title', 'OS ' . $serviceOrder->code)
 
 @section('topbar-actions')
     <form action="{{ route('service-orders.duplicate', $serviceOrder) }}" method="POST" style="display:inline;" onsubmit="return confirm('Duplicar esta OS?')">
         @csrf
         <button type="submit" class="btn btn-secondary btn-sm">Duplicar</button>
     </form>
-    <a href="{{ route('service-orders.pdf', $serviceOrder) }}" class="btn btn-secondary btn-sm">PDF</a>
+    <a href="{{ route('service-orders.pdf', $serviceOrder) }}" class="btn btn-secondary btn-sm" target="_blank">PDF Técnico</a>
+    <a href="{{ route('service-orders.pdf', [$serviceOrder, 'mode' => 'receipt']) }}" class="btn btn-secondary btn-sm" target="_blank">Recibo do Cliente</a>
     <a href="{{ route('service-orders.fiscal', $serviceOrder) }}" class="btn btn-secondary btn-sm">Fiscal</a>
     @can('update', $serviceOrder)
         <a href="{{ route('service-orders.edit', $serviceOrder) }}" class="btn btn-primary btn-sm">Editar</a>
@@ -35,7 +36,7 @@
 @endif
 
 <div class="grid-2">
-{{-- COLUNA PRINCIPAL --}}
+{{-- COLUNA PRINCIPAL (ESQUERDA) --}}
 <div>
 
 {{-- Informações da OS --}}
@@ -142,13 +143,13 @@
     @endcan
 </div>
 
-{{-- Checklists --}}
+{{-- Checklists Operacionais (Respostas inline integradas!) --}}
 @if($serviceOrder->checklists->isNotEmpty())
 <div class="card mb-4">
     <h3 class="font-bold mb-3 flex items-center gap-2">
         <x-heroicon-o-clipboard-document-check class="w-5 h-5 text-indigo-600"/> Checklists Operacionais
     </h3>
-    <div style="display:flex;flex-direction:column;gap:8px;">
+    <div style="display:flex;flex-direction:column;gap:12px;">
         @foreach($serviceOrder->checklists as $checklist)
         @php
             $total = $checklist->instancedQuestions->count();
@@ -176,9 +177,30 @@
                 @endcan
                 @endif
             </div>
+            
             @if($total > 0 && !$checklist->is_inactive)
             <div style="margin-top:8px;background:#e2e8f0;border-radius:99px;height:4px;overflow:hidden">
                 <div style="height:4px;border-radius:99px;background:{{ $pct==100?'#16a34a':'#6366f1' }};width:{{ $pct }}%;transition:width 0.4s"></div>
+            </div>
+            @endif
+
+            {{-- Exibição de Respostas Inline para Auditoria Operacional Unificada --}}
+            @if($checklist->isFilled() && !$checklist->is_inactive)
+            <div style="margin-top:12px;border-top:1px solid #f1f5f9;padding-top:10px;">
+                <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:6px">Respostas do Checklist:</div>
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                    @foreach($checklist->instancedQuestions as $q)
+                        <div style="font-size:12px;line-height:1.4;">
+                            <span style="color:#475569;font-weight:600;">{{ $q->question_text }}:</span>
+                            <span style="color:#1e293b;font-weight:500;">{{ $q->answer?->answer_value ?? '—' }}</span>
+                            @if($q->answer?->photo_path)
+                                <div style="margin-top:4px;">
+                                     <a href="{{ Storage::url($q->answer->photo_path) }}" target="_blank" style="color:#4f46e5;font-weight:600;font-size:11px;text-decoration:none;">Ver foto evidência</a>
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
             </div>
             @endif
         </div>
@@ -187,7 +209,7 @@
 </div>
 @endif
 
-{{-- Itens --}}
+{{-- Itens / Peças --}}
 @if($serviceOrder->items->isNotEmpty())
 <div class="card mb-4">
     <h3 class="font-bold mb-3 flex items-center gap-2"><x-heroicon-o-cog-6-tooth class="w-5 h-5 text-indigo-600"/> Itens / Peças</h3>
@@ -312,7 +334,7 @@
 
 </div>{{-- /coluna principal --}}
 
-{{-- COLUNA LATERAL --}}
+{{-- COLUNA LATERAL (DIREITA) --}}
 <div>
 
 {{-- Status --}}
@@ -359,6 +381,59 @@
 @endif
 @endcan
 
+{{-- Financeiro Integrado da Ordem de Serviço (Baixas Inline) --}}
+<div class="card mb-4">
+    <h3 class="font-bold mb-3 flex items-center gap-2"><x-heroicon-o-currency-dollar class="w-5 h-5 text-indigo-600"/> Financeiro e Parcelamento</h3>
+    
+    @if($serviceOrder->payments->isEmpty())
+        <p class="text-sm text-muted">A OS ainda não foi faturada (aguardando transição para status de fechamento).</p>
+    @else
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+            @foreach($serviceOrder->payments as $payment)
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px;font-size:12px;">
+                    <div style="display:flex;justify-content:between;font-weight:600;color:#1e293b;">
+                        <span>{{ $payment->payment_method }}</span>
+                        <span style="margin-left:auto">R$ {{ number_format($payment->amount, 2, ',', '.') }}</span>
+                    </div>
+                    <div class="text-xs text-muted mt-1">
+                        {{ $payment->installments_count }}x · 1ª parc: {{ $payment->first_due_date->format('d/m/Y') }}
+                    </div>
+                </div>
+            @endforeach
+        </div>
+
+        <h4 style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Parcelas do Contas a Receber</h4>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+            @forelse($serviceOrder->installments as $inst)
+                <div style="border:1px solid #e2e8f0;border-radius:8px;padding:10px;background:#fff;font-size:12px;display:flex;align-items:center;justify-content:between">
+                    <div>
+                        <div class="font-semibold text-slate-700">Parcela {{ $inst->installment_number }}</div>
+                        <div class="text-xs text-muted">Venc: {{ $inst->due_date->format('d/m/Y') }}</div>
+                        <div class="font-bold text-slate-900 mt-1">R$ {{ number_format($inst->amount, 2, ',', '.') }}</div>
+                    </div>
+                    <div style="text-align:right;margin-left:auto">
+                        @if($inst->status === 'paid' || $inst->paid_at)
+                            <span class="badge badge-success" style="font-size:10px;padding:3px 8px;">Pago</span>
+                            <div style="font-size:10px;color:#64748b;margin-top:4px;">Em {{ $inst->paid_at->format('d/m/Y') }}</div>
+                        @else
+                            <span class="badge badge-warning" style="font-size:10px;padding:3px 8px;margin-bottom:4px;display:inline-block;">Pendente</span>
+                            @can('update', $serviceOrder)
+                                <div>
+                                    <button type="button" onclick="openPaymentModal({{ $inst->id }}, {{ $inst->amount }}, {{ $serviceOrder->receivable->id }})" class="btn btn-primary btn-sm" style="font-size:10px;padding:3px 8px;border-radius:6px;width:100%;justify-content:center">
+                                        Baixar
+                                    </button>
+                                </div>
+                            @endcan
+                        @endif
+                    </div>
+                </div>
+            @empty
+                <p class="text-sm text-muted">Sem parcelas registradas.</p>
+            @endforelse
+        </div>
+    @endif
+</div>
+
 {{-- Histórico --}}
 <div class="card">
     <h3 class="font-bold mb-4 flex items-center gap-2"><x-heroicon-o-clock class="w-5 h-5 text-indigo-600"/> Histórico</h3>
@@ -382,6 +457,51 @@
 
 </div>{{-- /coluna lateral --}}
 </div>{{-- /grid-2 --}}
+
+<!-- MODAL INLINE DE BAIXA DE PARCELA -->
+<div id="payment-modal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; padding: 16px;">
+    <div style="background: #fff; border-radius: 12px; width: 100%; max-width: 400px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);">
+        <h3 style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 16px;">Baixar Parcela</h3>
+        
+        <form id="payment-form" method="POST" action="">
+            @csrf
+            <input type="hidden" name="redirect_to" value="{{ request()->fullUrl() }}">
+            
+            <div class="form-group mb-3">
+                <label class="form-label" style="font-weight: 600;">Valor Recebido</label>
+                <input type="number" step="0.01" name="paid_amount" id="modal-paid-amount" class="form-control" required>
+            </div>
+
+            <div class="form-group mb-3">
+                <label class="form-label" style="font-weight: 600;">Data do Recebimento</label>
+                <input type="date" name="paid_at" value="{{ date('Y-m-d') }}" class="form-control" required>
+            </div>
+
+            <div class="form-group mb-3">
+                <label class="form-label" style="font-weight: 600;">Meio de Pagamento</label>
+                <select name="payment_method" class="form-control" required>
+                    @foreach($paymentMethods as $method)
+                        <option value="{{ $method->value }}">{{ $method->label() }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="form-group mb-4">
+                <label class="form-label" style="font-weight: 600;">Conta Financeira Destino</label>
+                <select name="financial_account_id" class="form-control" required>
+                    @foreach($accounts as $acc)
+                        <option value="{{ $acc->id }}">{{ $acc->name }} (Saldo: R$ {{ number_format($acc->balance, 2, ',', '.') }})</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="flex gap-2">
+                <button type="button" onclick="closePaymentModal()" class="btn btn-secondary flex-1" style="justify-content: center; border-radius: 8px;">Cancelar</button>
+                <button type="submit" class="btn btn-primary flex-1" style="justify-content: center; border-radius: 8px;">Confirmar Baixa</button>
+            </div>
+        </form>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -410,7 +530,6 @@ if (canvas) {
     const ctx = canvas.getContext('2d');
     let drawing = false, lastX = 0, lastY = 0;
 
-    // Ajustar resolução do canvas
     function resizeCanvas() {
         const rect = canvas.getBoundingClientRect();
         canvas.width  = rect.width  * window.devicePixelRatio;
@@ -478,6 +597,21 @@ if (uploadInput) {
             uploadLabel.style.borderColor = '#6366f1';
         }
     });
+}
+
+// ── Modal de Baixa de Parcela ──────────────────────────────────────────────────
+const modal = document.getElementById('payment-modal');
+const form = document.getElementById('payment-form');
+const amountInput = document.getElementById('modal-paid-amount');
+
+function openPaymentModal(installmentId, amount, receivableId) {
+    amountInput.value = amount;
+    form.action = `/receivables/${receivableId}/installments/${installmentId}/pay`;
+    modal.style.display = 'flex';
+}
+
+function closePaymentModal() {
+    modal.style.display = 'none';
 }
 </script>
 @endpush

@@ -25,18 +25,25 @@
             </div>
 
             <div class="grid-2 mb-3" style="position: relative;">
-                <!-- Autocomplete Cliente -->
+                <!-- Autocomplete / Card Cliente -->
                 <div class="form-group" style="position: relative;">
                     <label class="form-label">Selecionar Cliente <span style="color:#ef4444">*</span></label>
-                    <div style="position: relative;">
+                    
+                    <!-- Container de Busca (Escondido se cliente já associado) -->
+                    <div id="client-search-container" style="position: relative; display: none;">
                         <input type="text" id="client-search-input" class="form-control" placeholder="Buscar cliente por nome ou documento..." autocomplete="off">
-                        <input type="hidden" name="client_id" id="client-id-hidden" value="{{ $quote->client_id }}" required>
                         <div id="client-autocomplete-results" style="display: none; position: absolute; left: 0; right: 0; top: 46px; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; z-index: 100; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-height: 240px; overflow-y: auto;">
                         </div>
                     </div>
-                    <span id="selected-client-badge" style="display: block; margin-top: 8px; font-size: 13px; font-weight: 600; color: #4f46e5;">
-                        Cliente Selecionado: {{ $quote->client->name }}
-                    </span>
+
+                    <!-- Card do Cliente Selecionado (Visível por padrão na Edição) -->
+                    <div id="client-details-card" style="display: block; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; position: relative;">
+                        <div style="font-weight: 700; color: #0f172a; font-size: 14px;" id="client-card-name">{{ $quote->client->name }}</div>
+                        <div style="color: #64748b; font-size: 12px; margin-top: 4px;" id="client-card-document">CPF/CNPJ: {{ $quote->client->formatted_document }}</div>
+                        <button type="button" onclick="clearSelectedClient()" style="position: absolute; right: 16px; top: 16px; color: #ef4444; border: none; background: transparent; cursor: pointer; font-size: 12px; font-weight: 600;">Alterar / Remover Cliente</button>
+                    </div>
+
+                    <input type="hidden" name="client_id" id="client-id-hidden" value="{{ $quote->client_id }}" required>
                 </div>
 
                 <!-- Endereço -->
@@ -105,7 +112,7 @@
                         </tr>
                     </thead>
                     <tbody id="items-tbody">
-                        <tr id="empty-row" style="display: none;">
+                        <tr id="empty-row">
                             <td colspan="6" style="text-align: center; padding: 32px; color: #94a3b8;">
                                 <x-heroicon-o-shopping-cart class="w-10 h-10" style="margin: 0 auto 8px; color: #cbd5e1;"/>
                                 <span style="font-size: 13px;">Nenhum produto ou serviço adicionado. Use o campo de pesquisa acima para incluir itens.</span>
@@ -120,7 +127,7 @@
                 <div style="width: 320px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px;">
                     <div class="flex justify-between items-center mb-2" style="font-size: 13px; color: #64748b;">
                         <span>Subtotal</span>
-                        <span id="subtotal-val" style="font-weight: 600; color: #1e293b;">R$ {{ number_format($quote->items_amount, 2, ',', '.') }}</span>
+                        <span id="subtotal-val" style="font-weight: 600; color: #1e293b;">R$ 0,00</span>
                     </div>
 
                     <div class="form-group flex justify-between items-center mb-3 gap-3" style="font-size: 13px; color: #64748b; margin-bottom: 12px;">
@@ -130,22 +137,88 @@
 
                     <div class="flex justify-between items-center pt-3 border-t" style="font-size: 15px; font-weight: 700; color: #0f172a;">
                         <span>Total Geral</span>
-                        <span id="total-val" style="color: #4f46e5; font-size: 20px;">R$ {{ number_format($quote->total_amount, 2, ',', '.') }}</span>
+                        <span id="total-val" style="color: #4f46e5; font-size: 20px;">R$ 0,00</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- 03. Informações Adicionais -->
+        <!-- 03. Logística & Prazos -->
         <div class="card mb-4 shadow-sm" style="border-radius: 12px; border: 1px solid #e2e8f0; padding: 24px;">
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid #f1f5f9; padding-bottom: 12px;">
-                <div style="width: 28px; height: 28px; border-radius: 6px; background: #fee2e2; color: #dc2626; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;">3</div>
+                <div style="width: 28px; height: 28px; border-radius: 6px; background: #dcfce7; color: #15803d; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;">3</div>
+                <h3 style="font-size: 15px; font-weight: 700; color: #1e293b;">Logística & Frete</h3>
+            </div>
+
+            <div class="grid-3 mb-4">
+                <div class="form-group">
+                    <label class="form-label" for="carrier">Transportadora</label>
+                    <input type="text" name="carrier" id="carrier" class="form-control" placeholder="Ex: Braspress, Correios, Própria..." value="{{ old('carrier', $quote->carrier) }}">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="freight_type">Modalidade do Frete</label>
+                    <select name="freight_type" id="freight_type" class="form-control">
+                        <option value="9" {{ old('freight_type', $quote->freight_type) == 9 ? 'selected' : '' }}>Sem Frete / CIF</option>
+                        <option value="0" {{ old('freight_type', $quote->freight_type) == 0 ? 'selected' : '' }}>Contratação do Frete por conta do Remetente (CIF)</option>
+                        <option value="1" {{ old('freight_type', $quote->freight_type) == 1 ? 'selected' : '' }}>Contratação do Frete por conta do Destinatário (FOB)</option>
+                        <option value="2" {{ old('freight_type', $quote->freight_type) == 2 ? 'selected' : '' }}>Contratação do Frete por conta de Terceiros</option>
+                        <option value="3" {{ old('freight_type', $quote->freight_type) == 3 ? 'selected' : '' }}>Transporte Próprio por conta do Remetente</option>
+                        <option value="4" {{ old('freight_type', $quote->freight_type) == 4 ? 'selected' : '' }}>Transporte Próprio por conta do Destinatário</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="freight_price">Valor do Frete (R$)</label>
+                    <input type="text" name="freight_price" id="freight_price" class="form-control money" placeholder="0,00" value="{{ old('freight_price', number_format($quote->freight_price, 2, ',', '.')) }}">
+                </div>
+            </div>
+
+            <div class="grid-3 mb-4">
+                <div class="form-group">
+                    <label class="form-label" for="volume">Volumes / Caixas</label>
+                    <input type="number" step="1" name="volume" id="volume" class="form-control" placeholder="Ex: 1, 5..." value="{{ old('volume', $quote->volume) }}">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="weight_gross">Peso Bruto (kg)</label>
+                    <input type="text" name="weight_gross" id="weight_gross" class="form-control decimal" placeholder="0,00" value="{{ old('weight_gross', $quote->weight_gross ? number_format($quote->weight_gross, 4, ',', '.') : '') }}">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="weight_net">Peso Líquido (kg)</label>
+                    <input type="text" name="weight_net" id="weight_net" class="form-control decimal" placeholder="0,00" value="{{ old('weight_net', $quote->weight_net ? number_format($quote->weight_net, 4, ',', '.') : '') }}">
+                </div>
+            </div>
+
+            <div class="grid-3">
+                <div class="form-group">
+                    <label class="form-label" for="delivery_deadline">Prazo de Entrega</label>
+                    <input type="text" name="delivery_deadline" id="delivery_deadline" class="form-control" placeholder="Ex: 5 dias úteis, Imediato..." value="{{ old('delivery_deadline', $quote->delivery_deadline) }}">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="warranty">Garantia Comercial</label>
+                    <input type="text" name="warranty" id="warranty" class="form-control" placeholder="Ex: 12 meses, 90 dias..." value="{{ old('warranty', $quote->warranty ?? '12 meses') }}">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="validity">Validade da Proposta</label>
+                    <input type="text" name="validity" id="validity" class="form-control" placeholder="Ex: 10 dias, 15 dias..." value="{{ old('validity', $quote->validity ?? '15 dias') }}">
+                </div>
+            </div>
+        </div>
+
+        <!-- 04. Observações & Notas -->
+        <div class="card mb-4 shadow-sm" style="border-radius: 12px; border: 1px solid #e2e8f0; padding: 24px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid #f1f5f9; padding-bottom: 12px;">
+                <div style="width: 28px; height: 28px; border-radius: 6px; background: #fee2e2; color: #dc2626; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;">4</div>
                 <h3 style="font-size: 15px; font-weight: 700; color: #1e293b;">Observações & Notas</h3>
             </div>
 
             <div class="form-group mb-3">
                 <label class="form-label" for="notes">Observações Públicas (Aparecem na proposta impressa)</label>
-                <textarea name="notes" id="notes" class="form-control" rows="3" placeholder="Ex: Condições de pagamento, prazos de entrega, garantia...">{{ $quote->notes }}</textarea>
+                <textarea name="notes" id="notes" class="form-control" rows="3" placeholder="Ex: Condições de pagamento extras, detalhes de instalação...">{{ $quote->notes }}</textarea>
             </div>
 
             <div class="form-group" style="margin-bottom: 0;">
@@ -173,8 +246,13 @@
     const clientInput = document.getElementById('client-search-input');
     const clientResults = document.getElementById('client-autocomplete-results');
     const hiddenClientId = document.getElementById('client-id-hidden');
-    const selectedClientBadge = document.getElementById('selected-client-badge');
     const selectAddress = document.getElementById('client_address_id');
+
+    // Elementos do Card do Cliente
+    const clientSearchContainer = document.getElementById('client-search-container');
+    const clientDetailsCard = document.getElementById('client-details-card');
+    const clientCardName = document.getElementById('client-card-name');
+    const clientCardDocument = document.getElementById('client-card-document');
 
     clientInput.addEventListener('input', function() {
         const query = this.value;
@@ -209,8 +287,13 @@
 
     function selectClient(client) {
         hiddenClientId.value = client.id;
-        selectedClientBadge.textContent = `Cliente Selecionado: ${client.name}`;
-        selectedClientBadge.style.display = 'block';
+        
+        // Exibir Card e Esconder Busca
+        clientCardName.textContent = client.name;
+        clientCardDocument.textContent = `CPF/CNPJ: ${client.document}`;
+        clientSearchContainer.style.display = 'none';
+        clientDetailsCard.style.display = 'block';
+
         clientInput.value = '';
         clientResults.style.display = 'none';
         
@@ -236,6 +319,23 @@
 
         // Carregar equipamentos
         loadClientEquipments(client.id);
+    }
+
+    function clearSelectedClient() {
+        hiddenClientId.value = '';
+        
+        // Esconder Card e Mostrar Busca
+        clientSearchContainer.style.display = 'block';
+        clientDetailsCard.style.display = 'none';
+        clientInput.focus();
+
+        // Resetar Endereço e Equipamento
+        selectAddress.disabled = true;
+        selectAddress.innerHTML = '<option value="">Selecione um cliente primeiro</option>';
+
+        const selectEquipment = document.getElementById('equipment_id');
+        selectEquipment.disabled = true;
+        selectEquipment.innerHTML = '<option value="">Selecione um cliente primeiro</option>';
     }
 
     function loadClientEquipments(clientId, selectedEquipmentId = null) {
@@ -447,6 +547,41 @@
                     normalizeZeros: true,
                 }
             }
+        });
+
+        // Inicializar mask de frete
+        const freightPriceInput = document.getElementById('freight_price');
+        IMask(freightPriceInput, {
+            mask: 'num',
+            blocks: {
+                num: {
+                    mask: Number,
+                    thousandsSeparator: '.',
+                    radix: ',',
+                    scale: 2,
+                    signed: false,
+                    padFractionalZeros: true,
+                    normalizeZeros: true,
+                }
+            }
+        });
+
+        // Inicializar masks decimais (peso)
+        document.querySelectorAll('.decimal').forEach(el => {
+            IMask(el, {
+                mask: 'num',
+                blocks: {
+                    num: {
+                        mask: Number,
+                        thousandsSeparator: '.',
+                        radix: ',',
+                        scale: 4,
+                        signed: false,
+                        padFractionalZeros: false,
+                        normalizeZeros: true,
+                    }
+                }
+            });
         });
 
         // RE-POPULAR ITENS EXISTENTES

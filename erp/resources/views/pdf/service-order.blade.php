@@ -2,18 +2,22 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+@php
+    $company = \App\Models\Company::first();
+    $primaryColor = $company?->primary_color ?: '#4f46e5';
+@endphp
 <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family: DejaVu Sans, sans-serif; font-size: 11px; color: #1e293b; padding: 30px; }
-    .header-table { width: 100%; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 20px; }
-    .header-logo { font-size: 20px; font-weight: bold; color: #0f172a; }
+    body { font-family: DejaVu Sans, sans-serif; font-size: 10px; color: #1e293b; padding: 30px; }
+    .header-table { width: 100%; border-bottom: 2px solid {{ $primaryColor }}; padding-bottom: 12px; margin-bottom: 20px; }
+    .header-logo { font-size: 16px; font-weight: bold; color: #0f172a; }
     .header-title { font-size: 14px; font-weight: bold; color: #475569; text-align: right; }
     .header-subtitle { font-size: 11px; color: #64748b; text-align: right; }
     
     .details-table { width: 100%; margin-bottom: 20px; }
     .details-table td { vertical-align: top; padding: 4px 0; }
     
-    .section-title { font-size: 9px; font-weight: bold; text-transform: uppercase; letter-spacing: .08em; color: #94a3b8; margin-top: 15px; margin-bottom: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+    .section-title { font-size: 9px; font-weight: bold; text-transform: uppercase; letter-spacing: .08em; color: {{ $primaryColor }}; margin-top: 15px; margin-bottom: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
     
     .label { font-size: 9px; color: #94a3b8; font-weight: bold; text-transform: uppercase; }
     .value { font-size: 11px; font-weight: 600; color: #1e293b; margin-bottom: 8px; }
@@ -24,9 +28,9 @@
     
     .total-row { font-weight: bold; }
     .total-row td { border-top: 1px solid #cbd5e1; padding: 6px 10px; }
-    .grand-total { font-size: 14px; font-weight: 800; color: #4f46e5; }
+    .grand-total { font-size: 13px; font-weight: 800; color: {{ $primaryColor }}; }
     
-    .footer { position: fixed; bottom: 0; left: 30px; right: 30px; text-align: center; font-size: 9px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 8px; }
+    .footer { position: fixed; bottom: 0; left: 30px; right: 30px; text-align: center; font-size: 8px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 8px; }
     .status-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 9px; font-weight: bold; background: #dbeafe; color: #1d4ed8; }
 </style>
 </head>
@@ -34,13 +38,22 @@
 
 <table class="header-table">
     <tr>
-        <td>
-            <div class="header-logo">Neksa ERP</div>
-            <div style="font-size: 12px; color: #475569; margin-top: 4px;">Ordem de Serviço: <strong>{{ $serviceOrder->code }}</strong></div>
+        <td style="vertical-align: middle;">
+            @if($company && $company->logo_path && file_exists(public_path('storage/' . $company->logo_path)))
+                <img src="{{ public_path('storage/' . $company->logo_path) }}" style="max-height: 45px; max-width: 140px; margin-bottom: 6px;"><br>
+            @endif
+            <div class="header-logo">{{ $company?->name ?? 'Neksa ERP' }}</div>
+            <div style="font-size: 9px; color: #475569; margin-top: 2px; line-height: 1.3;">
+                {{ $company?->document ? 'CNPJ: ' . $company->document : '' }}
+                {{ $company?->phone ? ' | Tel: ' . $company->phone : '' }}
+                {{ $company?->email ? ' | Email: ' . $company->email : '' }}
+                @if($company?->address)<br>{{ $company->address }}@endif
+            </div>
         </td>
-        <td style="text-align: right;">
-            <div class="header-title">Status: {{ $serviceOrder->status->name }}</div>
-            <div class="header-subtitle">
+        <td style="text-align: right; vertical-align: middle;">
+            <div class="header-title">Ordem de Serviço: {{ $serviceOrder->code }}</div>
+            <div class="header-subtitle" style="margin-top: 4px;">
+                Status: <strong>{{ $serviceOrder->status->name }}</strong><br>
                 Criada em: {{ $serviceOrder->created_at->format('d/m/Y') }}<br>
                 @if($serviceOrder->completed_at) Finalizada em: {{ $serviceOrder->completed_at->format('d/m/Y') }} @endif
             </div>
@@ -52,11 +65,15 @@
     <tr>
         <td style="width: 50%;">
             <div class="section-title">Cliente</div>
-            <div class="value" style="font-size: 13px; color: #0f172a;">{{ $serviceOrder->client->name }}</div>
-            <div style="color: #475569;">Documento: {{ $fiscal['client']['document'] }}</div>
-            <div style="color: #475569;">Telefone: {{ $serviceOrder->client->phone ?? '—' }}</div>
-            <div style="color: #475569;">E-mail: {{ $serviceOrder->client->email ?? '—' }}</div>
-            <div style="color: #475569; margin-top: 4px; font-size: 10px;">{{ $fiscal['client']['address'] }}</div>
+            <div class="value" style="font-size: 12px; color: #0f172a;">{{ $serviceOrder->client->name }}</div>
+            <div style="color: #475569; line-height: 1.3;">
+                Documento: {{ $fiscal['client']['document'] ?? $serviceOrder->client->formatted_document }}<br>
+                Telefone: {{ $serviceOrder->client->phone ?? '—' }}<br>
+                E-mail: {{ $serviceOrder->client->email ?? '—' }}
+            </div>
+            <div style="color: #475569; margin-top: 4px; font-size: 9px; line-height: 1.3;">
+                {{ $fiscal['client']['address'] ?? ($serviceOrder->clientAddress ? $serviceOrder->clientAddress->full_address : '') }}
+            </div>
         </td>
         <td style="width: 50%; padding-left: 20px;">
             <div class="section-title">Informações de Execução</div>
@@ -115,7 +132,7 @@
                 <td style="text-align: right;">R$ {{ number_format($serviceOrder->parts_amount, 2, ',', '.') }}</td>
             </tr>
             <tr class="total-row">
-                <td colspan="4" style="text-align: right; font-size: 12px;">Total Geral:</td>
+                <td colspan="4" style="text-align: right; font-size: 11px;">Total Geral:</td>
                 <td style="text-align: right;" class="grand-total">R$ {{ number_format($serviceOrder->total_amount, 2, ',', '.') }}</td>
             </tr>
         </tbody>
@@ -126,7 +143,7 @@
 @if($serviceOrder->checklists && $serviceOrder->checklists->isNotEmpty())
     @foreach($serviceOrder->checklists->where('filled_at', '!=', null) as $checklist)
     <div class="section-title" style="page-break-before:auto">Checklist: {{ $checklist->template->name }}</div>
-    <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:10px">
+    <table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:9px">
         <thead>
             <tr>
                 <th style="text-align:left;padding:5px 8px;background:#f8fafc;border-bottom:1px solid #e2e8f0;width:60%">Pergunta</th>
@@ -159,14 +176,14 @@
             @endforeach
         </tbody>
     </table>
-    <p style="font-size:9px;color:#64748b;margin-bottom:8px">Preenchido em {{ $checklist->filled_at->format('d/m/Y H:i') }}</p>
+    <p style="font-size:8px;color:#64748b;margin-bottom:8px">Preenchido em {{ $checklist->filled_at->format('d/m/Y H:i') }}</p>
     @endforeach
 @endif
 
 {{-- Check-in --}}
 @if($serviceOrder->checkins && $serviceOrder->checkins->isNotEmpty())
 <div class="section-title">Registro de Check-in em Campo</div>
-<table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:10px">
+<table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-size:9px">
     <thead>
         <tr>
             <th style="text-align:left;padding:5px 8px;background:#f8fafc;border-bottom:1px solid #e2e8f0">Técnico</th>
@@ -198,7 +215,7 @@
         @if(file_exists($path))
         <td style="width:33%;padding:4px;vertical-align:top">
             <img src="{{ $path }}" style="width:100%;height:100px;object-fit:cover;border-radius:4px;border:1px solid #e2e8f0">
-            @if($att->caption)<div style="font-size:9px;color:#64748b;text-align:center;margin-top:2px">{{ $att->caption }}</div>@endif
+            @if($att->caption)<div style="font-size:8px;color:#64748b;text-align:center;margin-top:2px">{{ $att->caption }}</div>@endif
         </td>
         @if(($i+1) % 3 === 0 && $i < $serviceOrder->attachments->count()-1)</tr><tr>@endif
         @endif
@@ -212,7 +229,7 @@
     <table style="width: 100%; page-break-inside: avoid; margin-top: 10px;">
         <tr>
             <td style="width: 60%; vertical-align: middle;">
-                <p style="font-size: 11px; color: #334155;">
+                <p style="font-size: 10px; color: #334155; line-height: 1.4;">
                     Declaramos que os serviços descritos acima foram executados a contento.<br><br>
                     Assinado por: <strong>{{ $serviceOrder->signature->signer_name }}</strong><br>
                     Documento do Signatário: {{ $serviceOrder->signature->signer_document ?? 'Não informado' }}<br>
@@ -221,9 +238,9 @@
             </td>
             <td style="width: 40%; text-align: right; vertical-align: middle;">
                 @if(file_exists(storage_path('app/public/' . $serviceOrder->signature->path)))
-                    <img src="{{ storage_path('app/public/' . $serviceOrder->signature->path) }}" style="max-width: 200px; max-height: 80px; border: 1px solid #cbd5e1; border-radius: 4px; background: white;">
+                    <img src="{{ storage_path('app/public/' . $serviceOrder->signature->path) }}" style="max-width: 180px; max-height: 70px; border: 1px solid #cbd5e1; border-radius: 4px; background: white;">
                 @else
-                    <div style="border: 1px dashed #cbd5e1; padding: 15px; font-size: 10px; color: #94a3b8; text-align: center; border-radius: 4px;">Assinatura em arquivo</div>
+                    <div style="border: 1px dashed #cbd5e1; padding: 15px; font-size: 9px; color: #94a3b8; text-align: center; border-radius: 4px;">Assinatura em arquivo</div>
                 @endif
             </td>
         </tr>
@@ -231,7 +248,7 @@
 @endif
 
 <div class="footer">
-    Documento gerado pelo Neksa ERP em {{ now()->format('d/m/Y H:i') }} · OS {{ $serviceOrder->code }}
+    Documento emitido por {{ $company?->name ?? 'Neksa ERP' }} em {{ now()->format('d/m/Y H:i') }} · OS {{ $serviceOrder->code }}
 </div>
 
 </body>

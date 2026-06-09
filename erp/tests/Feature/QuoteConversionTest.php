@@ -115,8 +115,16 @@ class QuoteConversionTest extends TestCase
         $this->assertEquals(450.00, $sale->total_amount); // 500 subtotal - 50 discount
         $this->assertEquals(QuoteStatus::Converted, $quote->fresh()->status);
         
-        // Verifica estoque decrementado (de 10 para 8)
+        // No Módulo E, a conversão de orçamento não baixa estoque. O estoque continua 10.
+        $this->assertEquals(10, $this->productItem->fresh()->stock);
+
+        // Faturar a venda efetivamente baixa o estoque
+        $sale = app(\App\Services\SaleService::class)->complete($sale, $this->admin);
         $this->assertEquals(8, $this->productItem->fresh()->stock);
+
+        // Cancelar a venda estorna o estoque
+        $sale = app(\App\Services\SaleService::class)->cancel($sale, $this->admin);
+        $this->assertEquals(10, $this->productItem->fresh()->stock);
 
         // Verifica itens da venda criados
         $this->assertDatabaseHas('sale_items', [
@@ -203,8 +211,41 @@ class QuoteConversionTest extends TestCase
         $this->assertEquals(250.00, $so->parts_amount);
         $this->assertEquals(QuoteStatus::Converted, $quote->fresh()->status);
         
-        // Verifica estoque de produto decrementado (de 10 para 9)
+        // No Módulo E, a conversão de orçamento não baixa estoque. O estoque continua 10.
+        $this->assertEquals(10, $this->productItem->fresh()->stock);
+
+        // Cadastra transições permitidas no banco para o teste
+        $openStatus = ServiceOrderStatus::where('slug', 'open')->first();
+        $completedStatus = ServiceOrderStatus::where('slug', 'completed')->first();
+        $cancelledStatus = ServiceOrderStatus::where('slug', 'cancelled')->first();
+
+        \DB::table('service_order_status_transitions')->insert([
+            ['from_status_id' => $openStatus->id, 'to_status_id' => $completedStatus->id],
+            ['from_status_id' => $completedStatus->id, 'to_status_id' => $cancelledStatus->id],
+        ]);
+
+        // Cria check-in e assinatura exigidos para concluir a OS
+        \DB::table('service_order_checkins')->insert([
+            'service_order_id' => $so->id,
+            'user_id' => $this->admin->id,
+            'type' => 'checkin',
+            'checked_at' => now(),
+        ]);
+
+        \DB::table('service_order_signatures')->insert([
+            'service_order_id' => $so->id,
+            'signer_name' => 'Assinante Teste',
+            'path' => 'signatures/test.png',
+            'signed_at' => now(),
+        ]);
+
+        // Concluir a OS efetivamente baixa o estoque
+        app(\App\Services\ServiceOrderService::class)->changeStatus($so, $completedStatus, $this->admin);
         $this->assertEquals(9, $this->productItem->fresh()->stock);
+
+        // Cancelar a OS estorna o estoque
+        app(\App\Services\ServiceOrderService::class)->changeStatus($so->fresh(), $cancelledStatus, $this->admin);
+        $this->assertEquals(10, $this->productItem->fresh()->stock);
 
         // Verifica itens da OS criados
         $this->assertDatabaseHas('service_order_items', [

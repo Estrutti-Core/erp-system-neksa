@@ -23,6 +23,15 @@ class Sale extends Model
         'items_amount',
         'total_amount',
         'notes',
+        'carrier',
+        'freight_price',
+        'volume',
+        'weight_gross',
+        'weight_net',
+        'freight_type',
+        'delivery_deadline',
+        'warranty',
+        'validity',
     ];
 
     protected $casts = [
@@ -54,6 +63,33 @@ class Sale extends Model
         return $this->hasMany(SaleItem::class);
     }
 
+    public function payments(): HasMany
+    {
+        return $this->hasMany(SalePayment::class);
+    }
+
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(SaleAttachment::class);
+    }
+
+    public function receivable()
+    {
+        return $this->morphOne(Receivable::class, 'source');
+    }
+
+    public function installments()
+    {
+        return $this->hasManyThrough(
+            ReceivableInstallment::class,
+            Receivable::class,
+            'source_id',
+            'receivable_id',
+            'id',
+            'id'
+        )->where('receivables.source_type', self::class);
+    }
+
     // ─── Scopes ───────────────────────────────────────────────────────────────
 
     public function scopeSearch($query, string $term)
@@ -69,7 +105,7 @@ class Sale extends Model
     public function recalculateTotals(): void
     {
         $this->items_amount = $this->items()->sum('total_price');
-        $this->total_amount = max(0, $this->items_amount - $this->discount_amount);
+        $this->total_amount = (string) max(0, (float) $this->items_amount - (float) $this->discount_amount);
         $this->save();
     }
 

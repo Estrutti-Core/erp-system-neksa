@@ -114,18 +114,153 @@ class ServiceOrderService
             }
         }
 
+        if ($newStatus->is_cancelled_state) {
+            $receivable = \App\Models\Receivable::where('source_type', get_class($serviceOrder))
+                ->where('source_id', $serviceOrder->id)
+                ->where('status', '!=', \App\Enums\PaymentStatus::Cancelled)
+                ->first();
+
+            if ($receivable) {
+                $hasPaidAmount = $receivable->installments()->where('paid_amount', '>', 0.00)->exists();
+                if ($hasPaidAmount) {
+                    throw ValidationException::withMessages([
+                        'status' => 'Não é possível cancelar este documento porque existem movimentações financeiras já liquidadas. Realize o estorno financeiro antes de prosseguir.',
+                    ]);
+                }
+            }
+        }
+
         return DB::transaction(function () use ($serviceOrder, $oldStatus, $newStatus, $user, $note) {
             $serviceOrder->status_id = $newStatus->id;
 
             if ($newStatus->slug === 'in_service' && !$serviceOrder->started_at) {
-                $serviceOrder->started_at = now();
+                $serviceOrder->started_at = \Illuminate\Support\Carbon::now();
             }
 
             if ($newStatus->is_completed_state) {
-                $serviceOrder->completed_at = now();
+                $serviceOrder->completed_at = \Illuminate\Support\Carbon::now();
             }
 
             $serviceOrder->save();
+
+            // ─── Integração Financeira ────────────────────────────────────────
+            if ($newStatus->is_completed_state) {
+                $snapshot = [
+                    'document_number' => $serviceOrder->code,
+                    'client_name' => $serviceOrder->client->name ?? 'Cliente Avulso',
+                    'total_amount' => (float) $serviceOrder->total_amount,
+                ];
+
+                $company = \App\Models\Company::first();
+                if (!$company) {
+                    $company = \App\Models\Company::create([
+                        'id' => 1,
+                        'name' => 'Neksa ERP',
+                    ]);
+                }
+                $companyId = $company->id;
+
+                $installments = [];
+                $payments = $serviceOrder->payments;
+
+                if ($payments && $payments->isNotEmpty()) {
+                    $instSeq = 1;
+                    foreach ($payments as $payment) {
+                        $methodAmount = (float) $payment->amount;
+                        $methodInstallments = (int) $payment->installments_count;
+                        $firstDueDate = \Illuminate\Support\Carbon::parse($payment->first_due_date);
+                        
+                        $baseAmount = round($methodAmount / $methodInstallments, 2);
+                        $remainder = round($methodAmount - ($baseAmount * $methodInstallments), 2);
+
+                        for ($i = 1; $i <= $methodInstallments; $i++) {
+                            $dueDate = $firstDueDate->copy()->addDays(($i - 1) * 30);
+                            $installmentAmount = $baseAmount;
+                            if ($i === $methodInstallments) {
+                                $installmentAmount += $remainder;
+                            }
+
+                            $installments[] = [
+                                'installment_number' => $instSeq++,
+                                'due_date'           => $dueDate->toDateString(),
+                                'amount'             => $installmentAmount,
+                                'financial_account_id' => $payment->financial_account_id,
+                            ];
+                        }
+                    }
+                } else {
+                    $account = \App\Models\FinancialAccount::where('is_active', true)->first();
+                    $installments[] = [
+                        'installment_number' => 1,
+                        'due_date'           => now()->toDateString(),
+                        'amount'             => (float) $serviceOrder->total_amount,
+                        'financial_account_id' => $account?->id ?? null,
+                    ];
+                }
+
+                app(\App\Services\FinancialService::class)->createReceivable([
+                    'company_id' => $companyId,
+                    'client_id' => $serviceOrder->client_id,
+                    'source_type' => get_class($serviceOrder),
+                    'source_id' => $serviceOrder->id,
+                    'source_snapshot' => $snapshot,
+                    'competence_date' => now(),
+                    'description' => "Contas a receber gerado pela conclusao da OS {$serviceOrder->code}",
+                    'total_amount' => (float) $serviceOrder->total_amount,
+                ], $installments, $user);
+            }
+
+            if ($newStatus->is_cancelled_state) {
+                $receivable = \App\Models\Receivable::where('source_type', get_class($serviceOrder))
+                    ->where('source_id', $serviceOrder->id)
+                    ->where('status', '!=', \App\Enums\PaymentStatus::Cancelled)
+                    ->first();
+                if ($receivable) {
+                    app(\App\Services\FinancialService::class)->cancelReceivable($receivable, $user);
+                }
+            }
+
+            // ─── Controle de Estoque (Módulo E) ───────────────────────────────
+            if ($newStatus->is_completed_state) {
+                $stockService = app(\App\Services\StockMovementService::class);
+                foreach ($serviceOrder->items as $item) {
+                    if ($item->product_id && $item->product) {
+                        $stockService->move(
+                            $item->product,
+                            -((float) $item->quantity),
+                            \App\Enums\StockMovementType::Output,
+                            \App\Enums\StockMovementSource::ServiceOrder,
+                            $serviceOrder->id,
+                            $user,
+                            "Baixa automática por conclusão da OS {$serviceOrder->code}"
+                        );
+                    }
+                }
+            }
+
+            if ($newStatus->is_cancelled_state) {
+                $wasCompletedBefore = ServiceOrderStatusHistory::where('service_order_id', $serviceOrder->id)
+                    ->whereIn('to_status_id', ServiceOrderStatus::where('is_completed_state', true)->pluck('id'))
+                    ->exists();
+
+                if ($wasCompletedBefore) {
+                    $stockService = app(\App\Services\StockMovementService::class);
+                    foreach ($serviceOrder->items as $item) {
+                        if ($item->product_id && $item->product) {
+                            $stockService->move(
+                                $item->product,
+                                (float) $item->quantity,
+                                \App\Enums\StockMovementType::Input,
+                                \App\Enums\StockMovementSource::ServiceOrder,
+                                $serviceOrder->id,
+                                $user,
+                                "Estorno automático por cancelamento da OS {$serviceOrder->code}"
+                            );
+                        }
+                    }
+                }
+            }
+            // ──────────────────────────────────────────────────────────────────
 
             // 1. Close current status history entry
             $currentHistory = ServiceOrderStatusHistory::where('service_order_id', $serviceOrder->id)
