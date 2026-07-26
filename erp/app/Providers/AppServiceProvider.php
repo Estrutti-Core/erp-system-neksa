@@ -41,8 +41,16 @@ class AppServiceProvider extends ServiceProvider
         // Configurar paginação para usar Bootstrap/CSS puro simples
         \Illuminate\Pagination\Paginator::useBootstrapFive();
 
-        if (\Illuminate\Support\Facades\Schema::hasTable('companies')) {
-            \Illuminate\Support\Facades\View::share('tenantCompany', \App\Models\Company::first());
+        if (config('app.env') === 'production') {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
+
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('companies')) {
+                \Illuminate\Support\Facades\View::share('tenantCompany', \App\Models\Company::first());
+            }
+        } catch (\Throwable $e) {
+            // Ignorar falhas de conexão/migração durante bootstrap/CLI
         }
     }
 }

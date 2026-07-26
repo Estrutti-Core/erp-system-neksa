@@ -2,6 +2,18 @@
 
 @section('title', 'Editar Item')
 
+@section('topbar-actions')
+    @can('delete', $product)
+        <button type="button" class="btn btn-danger" onclick="if(confirm('Tem certeza que deseja excluir permanentemente este item?')) document.getElementById('delete-form').submit();">
+            <x-heroicon-o-trash class="w-4 h-4"/> Excluir
+        </button>
+    @endcan
+    <a href="{{ route('products.index') }}" class="btn btn-secondary" style="border-radius: 8px;">Cancelar</a>
+    <button type="submit" form="product-form" class="btn btn-primary" style="background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%); border-radius: 8px;">
+        Salvar Alterações
+    </button>
+@endsection
+
 @section('content')
 <div style="max-width: 900px; margin: 0 auto; padding-bottom: 40px;">
     <!-- Cabeçalho de Ações -->
@@ -164,22 +176,6 @@
             </div>
         </div>
 
-        <!-- Ações do Formulário -->
-        <div class="flex items-center justify-between">
-            <div>
-                @can('delete', $product)
-                    <button type="button" class="btn btn-danger" onclick="if(confirm('Tem certeza que deseja excluir permanentemente este item?')) document.getElementById('delete-form').submit();">
-                        <x-heroicon-o-trash class="w-4 h-4"/> Excluir Item
-                    </button>
-                @endcan
-            </div>
-            <div class="flex gap-3">
-                <a href="{{ route('products.index') }}" class="btn btn-secondary" style="border-radius: 8px;">Cancelar</a>
-                <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%); border-radius: 8px; padding: 10px 24px;">
-                    Salvar Alterações
-                </button>
-            </div>
-        </div>
     </form>
 
     <!-- Formulário Invisível de Exclusão -->

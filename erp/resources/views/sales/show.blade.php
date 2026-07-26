@@ -2,6 +2,22 @@
 
 @section('title', 'Detalhes da Venda ' . $sale->code)
 
+@section('topbar-actions')
+    <a href="{{ route('sales.pdf', $sale) }}" class="btn btn-secondary" style="border-radius: 8px;" target="_blank">
+        <x-heroicon-o-document-arrow-down class="w-4 h-4"/> PDF
+    </a>
+    @can('update', $sale)
+        @if($sale->status !== App\Enums\SaleStatus::Cancelled)
+            <form method="POST" action="{{ route('sales.cancel', $sale) }}" onsubmit="return confirm('Tem certeza que deseja CANCELAR esta venda? Isso estornará o estoque automaticamente.');" style="display: inline-block;">
+                @csrf
+                <button type="submit" class="btn btn-danger flex items-center gap-2" style="border-radius: 8px;">
+                    <x-heroicon-o-x-mark class="w-4 h-4"/> Cancelar Venda
+                </button>
+            </form>
+        @endif
+    @endcan
+@endsection
+
 @section('content')
 <div style="max-width: 1200px; margin: 0 auto; padding-bottom: 60px;">
     <!-- Alertas -->
@@ -28,22 +44,6 @@
         <a href="{{ route('sales.index') }}" class="btn btn-secondary" style="border-radius: 8px;">
             <x-heroicon-o-arrow-left class="w-4 h-4"/> Voltar
         </a>
-
-        <div class="flex gap-2">
-            <a href="{{ route('sales.pdf', $sale) }}" class="btn btn-secondary" style="border-radius: 8px;" target="_blank">
-                <x-heroicon-o-document-arrow-down class="w-4 h-4"/> PDF
-            </a>
-            @can('update', $sale)
-                @if($sale->status !== App\Enums\SaleStatus::Cancelled)
-                    <form method="POST" action="{{ route('sales.cancel', $sale) }}" onsubmit="return confirm('Tem certeza que deseja CANCELAR esta venda? Isso estornará o estoque automaticamente.');">
-                        @csrf
-                        <button type="submit" class="btn btn-danger flex items-center gap-2" style="border-radius: 8px;">
-                            <x-heroicon-o-x-mark class="w-4 h-4"/> Cancelar Venda
-                        </button>
-                    </form>
-                @endif
-            @endcan
-        </div>
     </div>
 
     <!-- Grid Layout de 2 Colunas -->

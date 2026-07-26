@@ -2,6 +2,13 @@
 
 @section('title', 'Criar Orçamento')
 
+@section('topbar-actions')
+    <a href="{{ route('quotes.index') }}" class="btn btn-secondary" style="border-radius: 8px;">Cancelar</a>
+    <button type="submit" form="quote-form" class="btn btn-primary" style="background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%); border-radius: 8px;">
+        Salvar Orçamento
+    </button>
+@endsection
+
 @section('content')
 <div style="max-width: 1000px; margin: 0 auto; padding-bottom: 60px;">
     <!-- Cabeçalho -->
@@ -217,13 +224,6 @@
             </div>
         </div>
 
-        <!-- Ações do Formulário -->
-        <div class="flex items-center justify-end gap-3">
-            <a href="{{ route('quotes.index') }}" class="btn btn-secondary" style="border-radius: 8px;">Cancelar</a>
-            <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%); border-radius: 8px; padding: 10px 24px;">
-                Salvar Orçamento
-            </button>
-        </div>
     </form>
 </div>
 @endsection

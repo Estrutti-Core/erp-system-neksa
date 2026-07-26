@@ -46,6 +46,7 @@
                 {{ $company?->document ? 'CNPJ: ' . $company->document : '' }}
                 {{ $company?->phone ? ' | Tel: ' . $company->phone : '' }}
                 {{ $company?->email ? ' | Email: ' . $company->email : '' }}
+                @if($company?->address)<br>{{ $company->address }}@endif
             </div>
         </td>
         <td style="text-align: right; vertical-align: middle;">

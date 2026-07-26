@@ -174,6 +174,24 @@ Evitar:
 * uso de emojis (são estritamente proibidos em toda a interface do ERP empresarial)
 * exibição de dois asteriscos (`**`) literais no texto para indicar negrito na interface; use tags HTML apropriadas como `<strong>` ou `<b>` ou estilização CSS.
 
+## Diretrizes Responsivas & PWA (Padrão Sólido)
+
+Para garantir consistência visual móvel e performance PWA:
+
+1. **Conversão Automática de Tabelas**:
+   - Sempre envolva as tabelas de dados/listagens em `<div class="table-wrap">`.
+   - O JS global do layout lerá as colunas em `thead th` e aplicará `data-label` em cada célula `td`.
+   - Em dispositivos móveis (abaixo de 768px), o CSS transformará automaticamente a tabela em Cards legíveis e bem estruturados verticalmente.
+
+2. **Posicionamento de Ações (Topbar/Footer Actions)**:
+   - Botões de ações primárias ou secundárias de uma página (ex: "+ Nova OS", "Exportar", "Filtrar", "Salvar") devem ser definidos em `@section('topbar-actions')`.
+   - Em computadores, estes botões aparecem alinhados no cabeçalho superior (`topbar`).
+   - Em celulares, o layout oculta a barra de navegação comum e exibe estas ações em uma barra de rodapé fixa (`bottom-actions-bar`) com botões de tamanho de clique ideal (48px de altura), facilitando o alcance ergonômico.
+
+3. **Usabilidade Sem Zoom e Toques Ergonômicos**:
+   - Fontes de inputs, selects e textareas em telas móveis devem ter tamanho mínimo de `16px` para impedir o zoom automático incômodo nos navegadores (principalmente Safari/iOS).
+   - Botões e elementos interativos devem ter área de clique mínima de `44px`.
+
 ---
 
 # Estrutura Esperada

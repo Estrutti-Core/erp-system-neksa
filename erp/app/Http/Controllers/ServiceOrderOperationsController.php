@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Company;
 use App\Models\ServiceOrder;
 use App\Models\ServiceOrderChecklist;
 use App\Models\ChecklistAnswer;
 use App\Models\ServiceOrderCheckin;
 use App\Models\ServiceOrderSignature;
 use App\Models\ServiceOrderAttachment;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -24,7 +26,7 @@ class ServiceOrderOperationsController extends Controller
         abort_if($checklist->service_order_id !== $serviceOrder->id, 404);
         abort_if($checklist->is_inactive, 403, 'Este checklist está inativo.');
 
-        $checklist->load('instancedQuestions.answer');
+        $checklist->load(['instancedSections.questions.answer', 'template']);
 
         return view('service-orders.checklists.fill', compact('serviceOrder', 'checklist'));
     }
@@ -42,23 +44,39 @@ class ServiceOrderOperationsController extends Controller
         $request->validate([
             'answers'              => ['required', 'array'],
             'answers.*.value'      => ['nullable', 'string'],
+            'answers.*.observation'=> ['nullable', 'string', 'max:1000'],
             'answers.*.photo'      => ['nullable', 'image', 'max:10240'],
+            'answers.*.photos'     => ['nullable', 'array', 'max:5'],
+            'answers.*.photos.*'   => ['nullable', 'image', 'max:10240'],
         ]);
 
         $checklist->load('instancedQuestions');
 
-        foreach ($checklist->instancedQuestions as $question) {
-            $key     = $question->id;
-            $value   = $request->input("answers.{$key}.value");
-            $photo   = $request->file("answers.{$key}.photo");
-            $photoPath = null;
+        foreach ($checklist->instancedQuestions()->get() as $question) {
+            $key         = $question->id;
+            $value       = $request->input("answers.{$key}.value");
+            $observation = $request->input("answers.{$key}.observation");
 
-            if ($photo) {
-                $photoPath = $photo->store(
-                    "checklists/{$serviceOrder->id}",
-                    'public'
-                );
+            // Suporta input singular (tipo photo antigo) e array de fotos (novo)
+            $uploads = $request->file("answers.{$key}.photos") ?? [];
+            if ($single = $request->file("answers.{$key}.photo")) {
+                $uploads = [$single];
             }
+
+            // Recupera fotos já salvas para este item
+            $existing = ChecklistAnswer::where([
+                'service_order_checklist_id'          => $checklist->id,
+                'service_order_checklist_question_id' => $question->id,
+            ])->first();
+
+            $kept = $existing?->photos_json ?? [];
+
+            // Armazena novas fotos e mescla com as existentes (limite 5)
+            foreach ($uploads as $file) {
+                if (count($kept) >= 5) break;
+                $kept[] = $file->store("checklists/{$serviceOrder->id}", 'public');
+            }
+            $kept = array_values(array_slice($kept, 0, 5));
 
             ChecklistAnswer::updateOrCreate(
                 [
@@ -68,7 +86,9 @@ class ServiceOrderOperationsController extends Controller
                 [
                     'checklist_question_id' => $question->checklist_question_id,
                     'answer_value'          => $value,
-                    'photo_path'            => $photoPath ?? null,
+                    'observation'           => $observation ?: null,
+                    'photo_path'            => $kept[0] ?? $existing?->photo_path,
+                    'photos_json'           => !empty($kept) ? $kept : null,
                 ]
             );
         }
@@ -85,6 +105,35 @@ class ServiceOrderOperationsController extends Controller
     }
 
     /**
+     * Gera PDF do checklist preenchido.
+     */
+    public function checklistPdf(ServiceOrder $serviceOrder, ServiceOrderChecklist $checklist)
+    {
+        $this->authorize('view', $serviceOrder);
+
+        abort_if($checklist->service_order_id !== $serviceOrder->id, 404);
+
+        $checklist->load([
+            'instancedSections' => fn ($q) => $q->orderBy('order'),
+            'instancedSections.questions' => fn ($q) => $q->orderBy('order'),
+            'instancedSections.questions.answer',
+            'template',
+        ]);
+
+        $serviceOrder->load(['client', 'technician']);
+
+        $pdf = Pdf::loadView('pdf.checklist', [
+            'serviceOrder' => $serviceOrder,
+            'checklist'    => $checklist,
+            'company'      => Company::first(),
+        ])->setPaper('a4', 'portrait');
+
+        $filename = 'checklist-' . $serviceOrder->code . '.pdf';
+
+        return $pdf->stream($filename);
+    }
+
+    /**
      * Registra check-in de chegada do técnico (via GPS).
      */
     public function checkIn(Request $request, ServiceOrder $serviceOrder)
@@ -92,8 +141,8 @@ class ServiceOrderOperationsController extends Controller
         $this->authorize('update', $serviceOrder);
 
         $data = $request->validate([
-            'latitude'  => ['required', 'numeric', 'between:-90,90'],
-            'longitude' => ['required', 'numeric', 'between:-180,180'],
+            'latitude'  => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'type'      => ['required', 'in:checkin,checkout'],
             'notes'     => ['nullable', 'string', 'max:500'],
         ]);

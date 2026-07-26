@@ -17,9 +17,21 @@ class ChecklistTemplate extends Model
         'description',
     ];
 
+    public function sections(): HasMany
+    {
+        return $this->hasMany(ChecklistSection::class)->orderBy('order');
+    }
+
+    /** Perguntas sem seção (templates legados ou perguntas avulsas). */
     public function questions(): HasMany
     {
         return $this->hasMany(ChecklistQuestion::class)->orderBy('order', 'asc');
+    }
+
+    /** Todas as perguntas ordenadas por seção → ordem. */
+    public function allQuestions(): HasMany
+    {
+        return $this->hasMany(ChecklistQuestion::class)->orderBy('order');
     }
 
     public function services(): BelongsToMany
@@ -30,5 +42,10 @@ class ChecklistTemplate extends Model
     public function serviceOrderChecklists(): HasMany
     {
         return $this->hasMany(ServiceOrderChecklist::class);
+    }
+
+    public function hassSections(): bool
+    {
+        return $this->sections()->exists();
     }
 }

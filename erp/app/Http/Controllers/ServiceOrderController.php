@@ -127,21 +127,18 @@ class ServiceOrderController extends Controller
             'receivable.installments',
         ]);
 
+        $clients         = Client::active()->orderBy('name')->get();
         $technicians     = User::role('technician')->orderBy('name')->get();
         $allowedStatuses = $serviceOrder->status->allowedTransitions()->get();
         $accounts        = \App\Models\FinancialAccount::where('is_active', true)->get();
         $paymentMethods  = \App\Enums\PaymentMethod::cases();
 
-        return view('service-orders.show', compact('serviceOrder', 'technicians', 'allowedStatuses', 'accounts', 'paymentMethods'));
+        return view('service-orders.show', compact('serviceOrder', 'clients', 'technicians', 'allowedStatuses', 'accounts', 'paymentMethods'));
     }
 
-    public function edit(ServiceOrder $serviceOrder): View
+    public function edit(ServiceOrder $serviceOrder): RedirectResponse
     {
-        $serviceOrder->load(['client', 'clientAddress', 'items']);
-        $clients     = Client::active()->orderBy('name')->get();
-        $technicians = User::role('technician')->orderBy('name')->get();
-
-        return view('service-orders.edit', compact('serviceOrder', 'clients', 'technicians'));
+        return redirect()->route('service-orders.show', [$serviceOrder, 'edit' => 1]);
     }
 
     public function update(UpdateServiceOrderRequest $request, ServiceOrder $serviceOrder): RedirectResponse

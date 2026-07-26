@@ -201,4 +201,30 @@ class ClientEquipmentTest extends TestCase
         $this->assertCount(1, $newOrder->items);
         $this->assertEquals('Pente RAM 16GB', $newOrder->items->first()->description);
     }
+
+    public function test_service_order_creation_resolves_primary_address(): void
+    {
+        $address = \App\Models\ClientAddress::create([
+            'client_id'    => $this->client->id,
+            'label'        => 'Escritório',
+            'street'       => 'Av. Paulista',
+            'number'       => '1000',
+            'neighborhood' => 'Bela Vista',
+            'city'         => 'São Paulo',
+            'state'        => 'SP',
+            'zip_code'     => '01310-100',
+            'is_primary'   => true,
+        ]);
+
+        $response = $this->post(route('service-orders.store'), [
+            'client_id'    => $this->client->id,
+            'priority'     => 'high',
+            'description'  => 'Descrição de teste com tamanho adequado e caracteres.',
+        ]);
+
+        $os = ServiceOrder::where('client_id', $this->client->id)->first();
+        $this->assertNotNull($os);
+        $this->assertEquals($address->id, $os->client_address_id);
+    }
 }
+
