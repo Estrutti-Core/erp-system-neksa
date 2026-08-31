@@ -106,11 +106,15 @@ class Client extends Model
 
     public function scopeSearch($query, string $term)
     {
-        return $query->where(function ($q) use ($term) {
+        $cleanTerm = preg_replace('/\D/', '', $term);
+        return $query->where(function ($q) use ($term, $cleanTerm) {
             $q->where('name', 'ilike', "%{$term}%")
-                ->orWhere('document', 'like', "%{$term}%")
                 ->orWhere('email', 'ilike', "%{$term}%")
                 ->orWhere('phone', 'like', "%{$term}%");
+            
+            if ($cleanTerm !== '') {
+                $q->orWhere('document', 'like', "%{$cleanTerm}%");
+            }
         });
     }
 }

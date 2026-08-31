@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\ChecklistTemplate;
 use App\Models\ServiceOrder;
 use App\Models\ServiceOrderChecklist;
+use App\Models\ServiceOrderChecklistSection;
+use App\Models\ChecklistQuestion;
 use Illuminate\Support\Facades\DB;
 
 class ServiceOrderChecklistService
@@ -13,8 +15,9 @@ class ServiceOrderChecklistService
      * Sincroniza os checklists de uma Ordem de Serviço com base nos serviços associados.
      *
      * ADR-004: Template ≠ Instância.
-     * Ao criar uma nova instância de checklist, as perguntas do template são copiadas
-     * (snapshot) para service_order_checklist_questions, garantindo imutabilidade histórica.
+     * Ao criar uma nova instância de checklist, as seções e perguntas do template são copiadas
+     * (snapshot) para service_order_checklist_sections e service_order_checklist_questions,
+     * garantindo imutabilidade histórica.
      *
      * Proteção de evidências: checklists já preenchidos nunca são deletados.
      * Caso o serviço seja removido, o checklist preenchido é marcado como is_inactive=true.
@@ -42,7 +45,10 @@ class ServiceOrderChecklistService
         // 4. Adicionar instâncias para novos templates requeridos
         $templatesToAdd = array_diff($requiredTemplateIds, $existingTemplateIds);
         foreach ($templatesToAdd as $templateId) {
-            $template = ChecklistTemplate::with('questions')->find($templateId);
+            $template = ChecklistTemplate::with(['sections.questions', 'questions' => function ($q) {
+                $q->whereNull('checklist_section_id')->orderBy('order');
+            }])->find($templateId);
+
             if (!$template) continue;
 
             $this->instantiateChecklist($serviceOrder, $template);
@@ -59,7 +65,7 @@ class ServiceOrderChecklistService
                     // Checklist preenchido = evidência operacional → marcar como inativo
                     $checklist->update(['is_inactive' => true]);
                 } else {
-                    // Checklist vazio e não mais necessário → pode deletar com segurança
+                    // Checklist vazio e não mais necessário → deletar com segurança
                     $checklist->delete();
                 }
             }
@@ -77,7 +83,7 @@ class ServiceOrderChecklistService
     }
 
     /**
-     * Cria uma instância de checklist com snapshot das perguntas do template.
+     * Cria uma instância de checklist com snapshot das seções e perguntas do template.
      *
      * ADR-004: A partir deste momento, a OS não depende mais do template original.
      * Edições futuras no template não afetam esta instância.
@@ -88,18 +94,70 @@ class ServiceOrderChecklistService
             'checklist_template_id' => $template->id,
         ]);
 
-        // Snapshot: copiar perguntas do template para a instância
-        foreach ($template->questions as $question) {
-            $checklist->instancedQuestions()->create([
-                'checklist_question_id' => $question->id,
-                'question_text'         => $question->question_text,
-                'question_type'         => $question->question_type,
-                'options_json'          => $question->options_json,
-                'is_required'           => $question->is_required,
-                'order'                 => $question->order,
-            ]);
+        $sections = $template->sections;
+
+        if ($sections->isEmpty()) {
+            // Template sem seções: cria uma seção "Geral" implícita para manter
+            // a estrutura uniforme no payload e na UI.
+            $snapshotSection = $this->snapshotSection($checklist, null, 'Geral', null, 0);
+
+            $ungroupedQuestions = $template->questions()
+                ->whereNull('checklist_section_id')
+                ->orderBy('order')
+                ->get();
+
+            foreach ($ungroupedQuestions as $question) {
+                $this->snapshotQuestion($checklist, $snapshotSection, $question);
+            }
+
+            return $checklist;
+        }
+
+        foreach ($sections as $section) {
+            $snapshotSection = $this->snapshotSection(
+                $checklist,
+                $section->id,
+                $section->title,
+                $section->description,
+                $section->order,
+            );
+
+            foreach ($section->questions as $question) {
+                $this->snapshotQuestion($checklist, $snapshotSection, $question);
+            }
         }
 
         return $checklist;
+    }
+
+    private function snapshotSection(
+        ServiceOrderChecklist $checklist,
+        ?int $originalSectionId,
+        string $title,
+        ?string $description,
+        int $order
+    ): ServiceOrderChecklistSection {
+        return $checklist->instancedSections()->create([
+            'checklist_section_id' => $originalSectionId,
+            'title'                => $title,
+            'description'          => $description,
+            'order'                => $order,
+        ]);
+    }
+
+    private function snapshotQuestion(
+        ServiceOrderChecklist $checklist,
+        ServiceOrderChecklistSection $section,
+        ChecklistQuestion $question
+    ): void {
+        $checklist->instancedQuestions()->create([
+            'service_order_checklist_section_id' => $section->id,
+            'checklist_question_id'              => $question->id,
+            'question_text'                      => $question->question_text,
+            'question_type'                      => $question->question_type,
+            'options_json'                       => $question->options_json,
+            'is_required'                        => $question->is_required,
+            'order'                              => $question->order,
+        ]);
     }
 }

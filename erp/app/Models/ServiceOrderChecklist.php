@@ -55,8 +55,15 @@ class ServiceOrderChecklist extends Model
         return $this->hasMany(ChecklistAnswer::class);
     }
 
+    /** Seções instanciadas (snapshot imutável das seções do template). */
+    public function instancedSections(): HasMany
+    {
+        return $this->hasMany(ServiceOrderChecklistSection::class)->orderBy('order');
+    }
+
     /**
      * Perguntas instanciadas (snapshot imutável do template no momento da criação).
+     * Retorna TODAS as perguntas, independente de seção.
      */
     public function instancedQuestions(): HasMany
     {

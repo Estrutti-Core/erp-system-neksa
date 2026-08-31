@@ -23,6 +23,17 @@ class ServiceOrderService
             $openStatus = ServiceOrderStatus::where('slug', 'open')->firstOrFail();
             $data['status_id'] = $openStatus->id;
 
+            if (empty($data['client_address_id']) && !empty($data['client_id'])) {
+                $client = \App\Models\Client::find($data['client_id']);
+                if ($client) {
+                    $primaryAddress = $client->addresses()->where('is_primary', true)->first() 
+                        ?? $client->addresses()->first();
+                    if ($primaryAddress) {
+                        $data['client_address_id'] = $primaryAddress->id;
+                    }
+                }
+            }
+
             $serviceOrder = ServiceOrder::create($data);
 
             // 1. Create entry in dedicated status history
@@ -60,6 +71,17 @@ class ServiceOrderService
     public function update(ServiceOrder $serviceOrder, array $data, User $user): ServiceOrder
     {
         return DB::transaction(function () use ($serviceOrder, $data, $user) {
+            if (empty($data['client_address_id']) && !empty($data['client_id'])) {
+                $client = \App\Models\Client::find($data['client_id']);
+                if ($client) {
+                    $primaryAddress = $client->addresses()->where('is_primary', true)->first() 
+                        ?? $client->addresses()->first();
+                    if ($primaryAddress) {
+                        $data['client_address_id'] = $primaryAddress->id;
+                    }
+                }
+            }
+
             $serviceOrder->update($data);
 
             ServiceOrderHistory::create([

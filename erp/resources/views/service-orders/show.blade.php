@@ -10,7 +10,7 @@
     <a href="{{ route('service-orders.pdf', [$serviceOrder, 'mode' => 'receipt']) }}" class="btn btn-secondary btn-sm" target="_blank">Recibo do Cliente</a>
     <a href="{{ route('service-orders.fiscal', $serviceOrder) }}" class="btn btn-secondary btn-sm">Fiscal</a>
     @can('update', $serviceOrder)
-        <a href="{{ route('service-orders.edit', $serviceOrder) }}" class="btn btn-primary btn-sm">Editar</a>
+        <button type="button" id="btn-top-edit" onclick="toggleEditMode(true)" class="btn btn-primary btn-sm" style="display: {{ ($errors->any() || request('edit')) ? 'none' : 'inline-block' }};">Editar</button>
     @endcan
 @endsection
 
@@ -40,66 +40,196 @@
 <div>
 
 {{-- Informações da OS --}}
-<div class="card mb-4">
-    <h2 class="font-bold mb-3 flex items-center gap-2" style="font-size:16px">
-        <x-heroicon-o-clipboard-document-list class="w-5 h-5 text-indigo-600"/> {{ $serviceOrder->code }}
-    </h2>
-    <div class="grid-2">
-        <div>
-            <div class="text-xs text-muted">Cliente</div>
-            <div class="font-semibold mt-1">
-                <a href="{{ route('clients.show', $serviceOrder->client) }}" style="color:var(--primary);text-decoration:none">{{ $serviceOrder->client->name }}</a>
-            </div>
-            <div class="text-sm text-muted">{{ $serviceOrder->client->phone }}</div>
+<div class="card mb-4" id="os-details-card">
+    <div id="os-details-view" style="display: {{ ($errors->any() || request('edit')) ? 'none' : 'block' }};">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h2 class="font-bold flex items-center gap-2" style="font-size:16px; margin: 0;">
+                <x-heroicon-o-clipboard-document-list class="w-5 h-5 text-indigo-600"/> {{ $serviceOrder->code }}
+            </h2>
+            @can('update', $serviceOrder)
+                <button type="button" class="btn btn-secondary btn-sm" onclick="toggleEditMode(true)" style="padding: 4px 8px; font-size: 12px;">Editar Dados</button>
+            @endcan
         </div>
-        <div>
-            <div class="text-xs text-muted">Equipamento</div>
-            <div class="font-semibold mt-1">
-                @if($serviceOrder->equipment)
-                    {{ $serviceOrder->equipment->name }}
-                    @if($serviceOrder->equipment->serial_number)
-                        <div class="text-xs text-muted font-normal">S/N: {{ $serviceOrder->equipment->serial_number }}</div>
+        <div class="grid-2">
+            <div>
+                <div class="text-xs text-muted">Cliente</div>
+                <div class="font-semibold mt-1">
+                    <a href="{{ route('clients.show', $serviceOrder->client) }}" style="color:var(--primary);text-decoration:none">{{ $serviceOrder->client->name }}</a>
+                </div>
+                <div class="text-sm text-muted">{{ $serviceOrder->client->phone }}</div>
+            </div>
+            <div>
+                <div class="text-xs text-muted">Equipamento</div>
+                <div class="font-semibold mt-1">
+                    @if($serviceOrder->equipment)
+                        {{ $serviceOrder->equipment->name }}
+                        @if($serviceOrder->equipment->serial_number)
+                            <div class="text-xs text-muted font-normal">S/N: {{ $serviceOrder->equipment->serial_number }}</div>
+                        @endif
+                    @else
+                        <span class="text-muted font-normal">—</span>
                     @endif
-                @else
-                    <span class="text-muted font-normal">—</span>
-                @endif
+                </div>
             </div>
+            <div>
+                <div class="text-xs text-muted">Endereço</div>
+                <div class="text-sm mt-1">{{ $serviceOrder->clientAddress?->full_address ?? '—' }}</div>
+            </div>
+            <div>
+                <div class="text-xs text-muted">Técnico</div>
+                <div class="font-semibold mt-1">{{ $serviceOrder->technician?->name ?? 'Não atribuído' }}</div>
+            </div>
+            <div>
+                <div class="text-xs text-muted">Criado por</div>
+                <div class="text-sm mt-1">{{ $serviceOrder->creator->name }} · {{ $serviceOrder->created_at->format('d/m/Y H:i') }}</div>
+            </div>
+            @if($serviceOrder->scheduled_at)
+            <div>
+                <div class="text-xs text-muted">Agendado</div>
+                <div class="font-semibold mt-1">{{ $serviceOrder->scheduled_at->format('d/m/Y H:i') }}</div>
+            </div>
+            @endif
+            @if($serviceOrder->completed_at)
+            <div>
+                <div class="text-xs text-muted">Finalizado</div>
+                <div class="font-semibold mt-1" style="color:#16a34a">{{ $serviceOrder->completed_at->format('d/m/Y H:i') }}</div>
+            </div>
+            @endif
         </div>
-        <div>
-            <div class="text-xs text-muted">Endereço</div>
-            <div class="text-sm mt-1">{{ $serviceOrder->clientAddress?->full_address ?? '—' }}</div>
+        <div class="border-t mt-3 pt-3">
+            <div class="text-xs text-muted mb-1">Descrição do Problema</div>
+            <p style="font-size:14px;line-height:1.6;margin:0">{{ $serviceOrder->description }}</p>
         </div>
-        <div>
-            <div class="text-xs text-muted">Técnico</div>
-            <div class="font-semibold mt-1">{{ $serviceOrder->technician?->name ?? 'Não atribuído' }}</div>
-        </div>
-        <div>
-            <div class="text-xs text-muted">Criado por</div>
-            <div class="text-sm mt-1">{{ $serviceOrder->creator->name }} · {{ $serviceOrder->created_at->format('d/m/Y H:i') }}</div>
-        </div>
-        @if($serviceOrder->scheduled_at)
-        <div>
-            <div class="text-xs text-muted">Agendado</div>
-            <div class="font-semibold mt-1">{{ $serviceOrder->scheduled_at->format('d/m/Y H:i') }}</div>
+        @if($serviceOrder->services_performed)
+        <div class="mt-3">
+            <div class="text-xs text-muted mb-1">Serviços Executados</div>
+            <p style="font-size:14px;line-height:1.6;margin:0">{{ $serviceOrder->services_performed }}</p>
         </div>
         @endif
-        @if($serviceOrder->completed_at)
-        <div>
-            <div class="text-xs text-muted">Finalizado</div>
-            <div class="font-semibold mt-1" style="color:#16a34a">{{ $serviceOrder->completed_at->format('d/m/Y H:i') }}</div>
+        @if($serviceOrder->internal_notes)
+        <div class="mt-3 border-t pt-3">
+            <div class="text-xs text-muted mb-1">Observações Internas</div>
+            <p style="font-size:14px;line-height:1.6;margin:0">{{ $serviceOrder->internal_notes }}</p>
         </div>
         @endif
     </div>
-    <div class="border-t mt-3 pt-3">
-        <div class="text-xs text-muted mb-1">Descrição do Problema</div>
-        <p style="font-size:14px;line-height:1.6;margin:0">{{ $serviceOrder->description }}</p>
+
+    @can('update', $serviceOrder)
+    <div id="os-details-edit" style="display: {{ ($errors->any() || request('edit')) ? 'block' : 'none' }};">
+        <h2 class="font-bold mb-4 flex items-center gap-2" style="font-size:16px">
+            <x-heroicon-o-wrench-screwdriver class="w-5 h-5 text-indigo-600"/> Editar Dados da OS
+        </h2>
+
+        <form method="POST" action="{{ route('service-orders.update', $serviceOrder) }}">
+            @csrf
+            @method('PUT')
+
+            <div class="grid-2">
+                <div class="form-group" style="position: relative;">
+                    <label class="form-label">Cliente *</label>
+                    
+                    <!-- Container de Busca (Escondido após seleção) -->
+                    <div id="client-search-container" style="position: relative;">
+                        <input type="text" id="client-search-input" class="form-control {{ $errors->has('client_id') ? 'is-invalid' : '' }}" placeholder="Buscar cliente por nome ou CNPJ..." autocomplete="off">
+                        <div id="client-autocomplete-results" style="display: none; position: absolute; left: 0; right: 0; top: 46px; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; z-index: 100; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-height: 240px; overflow-y: auto;">
+                        </div>
+                    </div>
+
+                    <!-- Card do Cliente Selecionado -->
+                    <div id="client-details-card" style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; position: relative;">
+                        <div style="font-weight: 700; color: #0f172a; font-size: 14px;" id="client-card-name"></div>
+                        <div style="color: #64748b; font-size: 12px; margin-top: 4px;" id="client-card-document"></div>
+                        <button type="button" onclick="clearSelectedClient()" style="position: absolute; right: 12px; top: 12px; color: #ef4444; border: none; background: transparent; cursor: pointer; font-size: 12px; font-weight: 600;">Alterar</button>
+                    </div>
+
+                    <input type="hidden" name="client_id" id="client_id" value="{{ old('client_id', $serviceOrder->client_id) }}" required>
+                    @error('client_id')<div class="invalid-feedback" style="display:block;">{{ $message }}</div>@enderror
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="client_address_id">Endereço de Atendimento <span style="color:#ef4444">*</span></label>
+                    <select id="client_address_id" name="client_address_id" class="form-control {{ $errors->has('client_address_id') ? 'is-invalid' : '' }}" required disabled>
+                        <option value="">Selecione o cliente primeiro...</option>
+                    </select>
+                    @error('client_address_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="form-group">
+                    <label class="form-label" for="equipment_id">Equipamento do Cliente</label>
+                    <select id="equipment_id" name="equipment_id" class="form-control {{ $errors->has('equipment_id') ? 'is-invalid' : '' }}">
+                        <option value="">Selecione o cliente primeiro...</option>
+                    </select>
+                    @error('equipment_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="technician_id">Técnico Responsável</label>
+                    <select id="technician_id" name="technician_id" class="form-control">
+                        <option value="">A definir...</option>
+                        @foreach($technicians as $tech)
+                            <option value="{{ $tech->id }}" {{ old('technician_id', $serviceOrder->technician_id) == $tech->id ? 'selected' : '' }}>
+                                {{ $tech->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="form-group">
+                    <label class="form-label" for="priority">Prioridade *</label>
+                    <select id="priority" name="priority" class="form-control {{ $errors->has('priority') ? 'is-invalid' : '' }}" required>
+                        @foreach(\App\Enums\ServiceOrderPriority::cases() as $p)
+                            <option value="{{ $p->value }}" {{ old('priority', $serviceOrder->priority->value) == $p->value ? 'selected' : '' }}>
+                                {{ $p->label() }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('priority')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="scheduled_at">Data/Hora Agendada</label>
+                    <input type="datetime-local" id="scheduled_at" name="scheduled_at" value="{{ old('scheduled_at', $serviceOrder->scheduled_at?->format('Y-m-d\TH:i')) }}" class="form-control">
+                </div>
+            </div>
+
+            <div class="form-group mt-3">
+                <label class="form-label" for="description">Descrição do Problema *</label>
+                <textarea id="description" name="description" rows="4" class="form-control {{ $errors->has('description') ? 'is-invalid' : '' }}" required>{{ old('description', $serviceOrder->description) }}</textarea>
+                @error('description')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="services_performed">Serviços Executados</label>
+                <textarea id="services_performed" name="services_performed" rows="3" class="form-control" placeholder="Descreva os serviços realizados pelo técnico...">{{ old('services_performed', $serviceOrder->services_performed) }}</textarea>
+            </div>
+
+            <div class="grid-2">
+                <div class="form-group">
+                    <label class="form-label" for="service_amount">Valor de Mão de Obra (R$)</label>
+                    <input type="number" step="0.01" id="service_amount" name="service_amount" value="{{ old('service_amount', $serviceOrder->service_amount) }}" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="parts_amount">Valor de Peças/Materiais (R$)</label>
+                    <input type="number" step="0.01" id="parts_amount" name="parts_amount" value="{{ old('parts_amount', $serviceOrder->parts_amount) }}" class="form-control">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="internal_notes">Observações Internas</label>
+                <textarea id="internal_notes" name="internal_notes" rows="2" class="form-control" placeholder="Observações visíveis apenas para a equipe...">{{ old('internal_notes', $serviceOrder->internal_notes) }}</textarea>
+            </div>
+
+            <div class="flex gap-3 mt-4">
+                <button type="submit" class="btn btn-primary btn-lg flex items-center gap-2"><x-heroicon-o-check class="w-5 h-5"/> Salvar Alterações</button>
+                <button type="button" class="btn btn-secondary btn-lg" onclick="toggleEditMode(false)">Cancelar</button>
+            </div>
+        </form>
     </div>
-    @if($serviceOrder->services_performed)
-    <div class="mt-3">
-        <div class="text-xs text-muted mb-1">Serviços Executados</div>
-        <p style="font-size:14px;line-height:1.6;margin:0">{{ $serviceOrder->services_performed }}</p>
-    </div>
-    @endif
+    @endcan
 </div>
 
 {{-- Check-in GPS --}}
@@ -169,6 +299,15 @@
                     @endif
                 </div>
                 @if(!$checklist->is_inactive)
+                @if($checklist->isFilled())
+                    <a href="{{ route('service-orders.checklists.pdf', [$serviceOrder, $checklist]) }}"
+                       target="_blank"
+                       class="btn btn-secondary btn-sm"
+                       style="white-space:nowrap;gap:4px;display:inline-flex;align-items:center;">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:13px;height:13px"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>
+                        PDF
+                    </a>
+                @endif
                 @can('update', $serviceOrder)
                 <a href="{{ route('service-orders.checklists.fill', [$serviceOrder, $checklist]) }}"
                    class="btn btn-{{ $checklist->isFilled()?'secondary':'primary' }} btn-sm" style="white-space:nowrap">
@@ -190,12 +329,33 @@
                 <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:6px">Respostas do Checklist:</div>
                 <div style="display:flex;flex-direction:column;gap:6px;">
                     @foreach($checklist->instancedQuestions as $q)
-                        <div style="font-size:12px;line-height:1.4;">
+                        @if($q->question_type === 'label') @continue @endif
+                        <div style="font-size:12px;line-height:1.4;padding:4px 0;border-bottom:1px solid #f8fafc;">
                             <span style="color:#475569;font-weight:600;">{{ $q->question_text }}:</span>
-                            <span style="color:#1e293b;font-weight:500;">{{ $q->answer?->answer_value ?? '—' }}</span>
-                            @if($q->answer?->photo_path)
-                                <div style="margin-top:4px;">
-                                     <a href="{{ Storage::url($q->answer->photo_path) }}" target="_blank" style="color:#4f46e5;font-weight:600;font-size:11px;text-decoration:none;">Ver foto evidência</a>
+                            <span style="color:#1e293b;font-weight:500;">
+                                @php $av = $q->answer?->answer_value; @endphp
+                                @if($q->question_type === 'checkbox')
+                                    {{ $av === 'sim' ? '✓ Sim' : ($av === 'não' ? '✗ Não' : '—') }}
+                                @elseif($q->question_type === 'photo')
+                                    @php $photoCount = count($q->answer?->photos_urls ?? []); @endphp
+                                    {{ $photoCount > 0 ? $photoCount . ' foto(s)' : '—' }}
+                                @elseif($q->question_type === 'signature')
+                                    {{ $av && str_starts_with($av, 'data:') ? '✓ Assinado' : '—' }}
+                                @else
+                                    {{ $av ?? '—' }}
+                                @endif
+                            </span>
+                            @if($q->answer?->observation)
+                                <span style="color:#94a3b8;font-size:11px;font-style:italic;"> — {{ Str::limit($q->answer->observation, 80) }}</span>
+                            @endif
+                            @php $urls = $q->answer?->photos_urls ?? []; @endphp
+                            @if(count($urls) > 0)
+                                <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;">
+                                    @foreach($urls as $u)
+                                        <a href="{{ $u }}" target="_blank">
+                                            <img src="{{ $u }}" style="width:44px;height:44px;object-fit:cover;border-radius:4px;border:1px solid #e2e8f0;" alt="Foto">
+                                        </a>
+                                    @endforeach
                                 </div>
                             @endif
                         </div>
@@ -613,5 +773,194 @@ function openPaymentModal(installmentId, amount, receivableId) {
 function closePaymentModal() {
     modal.style.display = 'none';
 }
+
+// ── Alternância de Modo (Visualização / Edição) ──────────────────────────────
+function toggleEditMode(show) {
+    const viewContainer = document.getElementById('os-details-view');
+    const editContainer = document.getElementById('os-details-edit');
+    const topEditBtn = document.getElementById('btn-top-edit');
+    
+    if (show) {
+        if (viewContainer) viewContainer.style.display = 'none';
+        if (editContainer) editContainer.style.display = 'block';
+        if (topEditBtn) topEditBtn.style.display = 'none';
+    } else {
+        if (viewContainer) viewContainer.style.display = 'block';
+        if (editContainer) editContainer.style.display = 'none';
+        if (topEditBtn) topEditBtn.style.display = 'inline-block';
+        
+        // Remove edit query param if it was loaded with ?edit=1
+        const url = new URL(window.location.href);
+        if (url.searchParams.has('edit')) {
+            url.searchParams.delete('edit');
+            window.history.replaceState({}, '', url.toString());
+        }
+    }
+}
+
+// ── Cliente, Endereço e Equipamento (Edição) ──────────────────────────────────
+@can('update', $serviceOrder)
+document.addEventListener('DOMContentLoaded', function() {
+    const clientInput = document.getElementById('client-search-input');
+    const clientResults = document.getElementById('client-autocomplete-results');
+    const hiddenClientId = document.getElementById('client_id');
+    const selectAddress = document.getElementById('client_address_id');
+    const equipmentSelect = document.getElementById('equipment_id');
+    const clientSearchContainer = document.getElementById('client-search-container');
+    const clientDetailsCard = document.getElementById('client-details-card');
+    const clientCardName = document.getElementById('client-card-name');
+    const clientCardDocument = document.getElementById('client-card-document');
+
+    if (clientInput) {
+        clientInput.addEventListener('input', function() {
+            const query = this.value;
+            if (query.length < 2) {
+                clientResults.style.display = 'none';
+                return;
+            }
+
+            fetch(`/quotes/search-clients?q=${encodeURIComponent(query)}`)
+                .then(res => res.json())
+                .then(data => {
+                    clientResults.innerHTML = '';
+                    if (data.length === 0) {
+                        clientResults.innerHTML = '<div style="padding: 10px 14px; color: #94a3b8; font-size: 13px;">Nenhum cliente encontrado</div>';
+                    } else {
+                        data.forEach(client => {
+                            const item = document.createElement('div');
+                            item.style.padding = '10px 14px';
+                            item.style.cursor = 'pointer';
+                            item.style.fontSize = '13px';
+                            item.style.borderBottom = '1px solid #f1f5f9';
+                            item.className = 'hover-results';
+                            item.innerHTML = `<div style="font-weight: 600; color: #1e293b;">${client.name}</div><div style="font-size: 11px; color: #64748b;">CPF/CNPJ: ${client.document}</div>`;
+                            
+                            item.addEventListener('click', () => selectClient(client));
+                            clientResults.appendChild(item);
+                        });
+                    }
+                    clientResults.style.display = 'block';
+                });
+        });
+    }
+
+    function selectClient(client) {
+        hiddenClientId.value = client.id;
+        clientCardName.textContent = client.name;
+        clientCardDocument.textContent = `CPF/CNPJ: ${client.document}`;
+        clientSearchContainer.style.display = 'none';
+        clientDetailsCard.style.display = 'block';
+        
+        if (clientInput) clientInput.value = '';
+        if (clientResults) clientResults.style.display = 'none';
+        
+        loadAddresses(client.id, "{{ old('client_address_id', $serviceOrder->client_address_id) }}");
+        loadEquipments(client.id, "{{ old('equipment_id', $serviceOrder->equipment_id) }}");
+    }
+
+    window.clearSelectedClient = function() {
+        hiddenClientId.value = '';
+        clientSearchContainer.style.display = 'block';
+        clientDetailsCard.style.display = 'none';
+        if (clientInput) clientInput.focus();
+        
+        selectAddress.disabled = true;
+        selectAddress.innerHTML = '<option value="">Selecione o cliente primeiro...</option>';
+        equipmentSelect.innerHTML = '<option value="">Selecione o cliente primeiro...</option>';
+    }
+
+    function loadAddresses(clientId, selectedId = null) {
+        if (!clientId) {
+            selectAddress.innerHTML = '<option value="">Selecione o cliente primeiro...</option>';
+            selectAddress.disabled = true;
+            return;
+        }
+
+        selectAddress.disabled = false;
+        selectAddress.innerHTML = '<option value="">Carregando endereços...</option>';
+
+        fetch(`/quotes/client-addresses/${clientId}`)
+            .then(r => r.json())
+            .then(data => {
+                selectAddress.innerHTML = '';
+                if (data.length === 0) {
+                    selectAddress.innerHTML = '<option value="">Cliente sem endereços cadastrados</option>';
+                } else {
+                    data.forEach(addr => {
+                        const opt = document.createElement('option');
+                        opt.value = addr.id;
+                        opt.textContent = addr.label + ' (' + addr.street + ', ' + addr.number + ')';
+                        if (selectedId && addr.id == selectedId) {
+                            opt.selected = true;
+                        } else if (!selectedId && addr.is_primary) {
+                            opt.selected = true;
+                        }
+                        selectAddress.appendChild(opt);
+                    });
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                selectAddress.innerHTML = '<option value="">Erro ao carregar endereços</option>';
+            });
+    }
+
+    function loadEquipments(clientId, selectedId = null) {
+        if (!clientId) {
+            equipmentSelect.innerHTML = '<option value="">Selecione o cliente primeiro...</option>';
+            return;
+        }
+
+        equipmentSelect.innerHTML = '<option value="">Carregando...</option>';
+
+        fetch(`/clients/${clientId}/equipments/json`)
+            .then(r => r.json())
+            .then(data => {
+                equipmentSelect.innerHTML = '<option value="">Selecione o equipamento...</option>';
+                data.forEach(e => {
+                    const opt = document.createElement('option');
+                    opt.value = e.id;
+                    let text = e.name;
+                    const details = [e.brand, e.model].filter(Boolean).join(' ');
+                    if (details) text += ` (${details})`;
+                    if (e.serial_number) text += ` - S/N: ${e.serial_number}`;
+                    
+                    opt.textContent = text;
+                    if (selectedId && e.id == selectedId) {
+                        opt.selected = true;
+                    }
+                    equipmentSelect.appendChild(opt);
+                });
+            })
+            .catch(err => {
+                console.error(err);
+                equipmentSelect.innerHTML = '<option value="">Erro ao carregar equipamentos</option>';
+            });
+    }
+
+    // Fechar resultados ao clicar fora
+    document.addEventListener('click', function(e) {
+        if (clientInput && e.target !== clientInput && clientResults) {
+            clientResults.style.display = 'none';
+        }
+    });
+
+    // Inicializar com cliente selecionado se houver no form (old ou request)
+    @php
+        $selectedClient = null;
+        $selectedClientId = old('client_id', $serviceOrder->client_id);
+        if ($selectedClientId) {
+            $selectedClient = $clients->firstWhere('id', $selectedClientId);
+        }
+    @endphp
+    @if($selectedClient)
+        selectClient({
+            id: "{{ $selectedClient->id }}",
+            name: "{!! addslashes($selectedClient->name) !!}",
+            document: "{{ $selectedClient->formatted_document }}"
+        });
+    @endif
+});
+@endcan
 </script>
 @endpush

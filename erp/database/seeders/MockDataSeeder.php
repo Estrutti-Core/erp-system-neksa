@@ -476,5 +476,131 @@ class MockDataSeeder extends Seeder
                 ]);
             }
         }
+
+        // 7. Seed Purchase Orders & Inventory Conferences (Inputs/Entradas)
+        $supplier = \App\Models\Supplier::first() ?? \App\Models\Supplier::create([
+            'name' => 'Distribuidora Global de Peças',
+            'document' => '11223344000155',
+            'email' => 'vendas@globalpecas.com',
+            'phone' => '11999998888'
+        ]);
+
+        $product1 = Product::where('sku', 'PROD-MT-RB750')->first();
+        $product2 = Product::where('sku', 'PROD-TPL-SG24')->first();
+        $product3 = Product::where('sku', 'PROD-NEX-CAT6')->first();
+
+        // Draft Purchase Order
+        $poDraft = \App\Models\PurchaseOrder::create([
+            'supplier_id' => $supplier->id,
+            'status' => \App\Enums\PurchaseOrderStatus::Draft,
+            'total_amount' => 0,
+            'notes' => 'Rascunho de pedido de compra para reposição de estoque.',
+            'created_by' => 1,
+        ]);
+        \App\Models\PurchaseOrderItem::create([
+            'purchase_order_id' => $poDraft->id,
+            'product_id' => $product1->id,
+            'description' => $product1->name,
+            'quantity' => 10,
+            'unit' => $product1->commercial_unit,
+            'unit_cost' => $product1->cost_price,
+            'total_cost' => $product1->cost_price * 10,
+        ]);
+        $poDraft->recalculateTotal();
+
+        // Ordered Purchase Order
+        $poOrdered = \App\Models\PurchaseOrder::create([
+            'supplier_id' => $supplier->id,
+            'status' => \App\Enums\PurchaseOrderStatus::Ordered,
+            'total_amount' => 0,
+            'notes' => 'Pedido enviado para o fornecedor. Aguardando entrega física.',
+            'created_by' => 1,
+        ]);
+        \App\Models\PurchaseOrderItem::create([
+            'purchase_order_id' => $poOrdered->id,
+            'product_id' => $product2->id,
+            'description' => $product2->name,
+            'quantity' => 5,
+            'unit' => $product2->commercial_unit,
+            'unit_cost' => $product2->cost_price,
+            'total_cost' => $product2->cost_price * 5,
+        ]);
+        $poOrdered->recalculateTotal();
+
+        // Pending Inventory Conference (Entrada) for the Ordered Purchase Order
+        \App\Models\InventoryConference::create([
+            'purchase_order_id' => $poOrdered->id,
+            'status' => \App\Enums\InventoryConferenceStatus::Pending,
+            'checked_by' => 1,
+            'notes' => 'Aguardando chegada das caixas no estoque.',
+        ]);
+
+        // Received Purchase Order
+        $poReceived = \App\Models\PurchaseOrder::create([
+            'supplier_id' => $supplier->id,
+            'status' => \App\Enums\PurchaseOrderStatus::Received,
+            'total_amount' => 0,
+            'notes' => 'Compra recebida na totalidade sem divergências.',
+            'created_by' => 1,
+        ]);
+        \App\Models\PurchaseOrderItem::create([
+            'purchase_order_id' => $poReceived->id,
+            'product_id' => $product3->id,
+            'description' => $product3->name,
+            'quantity' => 15,
+            'unit' => $product3->commercial_unit,
+            'unit_cost' => $product3->cost_price,
+            'total_cost' => $product3->cost_price * 15,
+        ]);
+        $poReceived->recalculateTotal();
+
+        // Completed Inventory Conference (Entrada) for Received Purchase Order
+        $confCompleted = \App\Models\InventoryConference::create([
+            'purchase_order_id' => $poReceived->id,
+            'status' => \App\Enums\InventoryConferenceStatus::Completed,
+            'checked_by' => 1,
+            'completed_at' => Carbon::now()->subDays(1),
+            'notes' => 'Todas as 15 caixas conferidas e cadastradas no estoque.',
+        ]);
+        \App\Models\InventoryConferenceItem::create([
+            'inventory_conference_id' => $confCompleted->id,
+            'product_id' => $product3->id,
+            'quantity_ordered' => 15,
+            'quantity_received' => 15,
+        ]);
+
+        // Partially Received Purchase Order
+        $poPartial = \App\Models\PurchaseOrder::create([
+            'supplier_id' => $supplier->id,
+            'status' => \App\Enums\PurchaseOrderStatus::PartiallyReceived,
+            'total_amount' => 0,
+            'notes' => 'Pedido com entrega parcial / divergência registrada.',
+            'created_by' => 1,
+        ]);
+        \App\Models\PurchaseOrderItem::create([
+            'purchase_order_id' => $poPartial->id,
+            'product_id' => $product1->id,
+            'description' => $product1->name,
+            'quantity' => 20,
+            'unit' => $product1->commercial_unit,
+            'unit_cost' => $product1->cost_price,
+            'total_cost' => $product1->cost_price * 20,
+        ]);
+        $poPartial->recalculateTotal();
+
+        // Divergent Inventory Conference (Entrada) for Partially Received Purchase Order
+        $confDivergent = \App\Models\InventoryConference::create([
+            'purchase_order_id' => $poPartial->id,
+            'status' => \App\Enums\InventoryConferenceStatus::Divergent,
+            'checked_by' => 1,
+            'completed_at' => Carbon::now()->subHours(4),
+            'notes' => 'Faltaram 2 unidades no envio.',
+        ]);
+        \App\Models\InventoryConferenceItem::create([
+            'inventory_conference_id' => $confDivergent->id,
+            'product_id' => $product1->id,
+            'quantity_ordered' => 20,
+            'quantity_received' => 18,
+        ]);
     }
 }

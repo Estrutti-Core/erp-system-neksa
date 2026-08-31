@@ -331,5 +331,42 @@ class ServiceAndPJClientTest extends TestCase
             'name' => 'Ar Condicionado LG 24k BTU',
         ]);
     }
+
+    public function test_can_search_clients_by_cnpj_autocomplete(): void
+    {
+        Client::create([
+            'name' => 'Cliente Pesquisa CNPJ',
+            'document' => '12345678901234',
+            'document_type' => 'cnpj',
+            'email' => 'pesquisa@cnpj.com',
+            'phone' => '11999998888',
+            'is_active' => true,
+        ]);
+
+        // Search with formatted CNPJ
+        $response = $this->getJson(route('quotes.search-clients') . '?q=12.345.678/9012-34');
+        $response->assertOk()
+            ->assertJsonFragment([
+                'name' => 'Cliente Pesquisa CNPJ',
+                'document' => '12.345.678/9012-34',
+            ]);
+
+        // Search with unformatted CNPJ
+        $response2 = $this->getJson(route('quotes.search-clients') . '?q=12345678901234');
+        $response2->assertOk()
+            ->assertJsonFragment([
+                'name' => 'Cliente Pesquisa CNPJ',
+                'document' => '12.345.678/9012-34',
+            ]);
+
+        // Search with partial CNPJ
+        $response3 = $this->getJson(route('quotes.search-clients') . '?q=12.345');
+        $response3->assertOk()
+            ->assertJsonFragment([
+                'name' => 'Cliente Pesquisa CNPJ',
+                'document' => '12.345.678/9012-34',
+            ]);
+    }
 }
+
 

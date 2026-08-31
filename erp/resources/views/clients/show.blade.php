@@ -266,7 +266,7 @@
                 <div style="flex:1;min-width:0">
                     <div class="flex justify-between items-center">
                         <span style="font-size:12px;font-weight:700;color:#64748b">{{ $os->code }}</span>
-                        <span class="badge badge-{{ $os->status->color() }}">{{ $os->status->label() }}</span>
+                        <span class="badge badge-{{ $os->status->color }}">{{ $os->status->name }}</span>
                     </div>
                     <div style="font-size:13px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ $os->description }}</div>
                     <div class="text-xs text-muted mt-1">
@@ -303,12 +303,18 @@
                 </div>
                 <div class="grid-2">
                     <div class="form-group">
-                        <label class="form-label" for="equip-brand">Marca</label>
-                        <input type="text" id="equip-brand" name="brand" class="form-control" placeholder="Ex: Samsung">
+                        <label class="form-label" for="equip-brand-select">Marca</label>
+                        <select id="equip-brand-select" class="form-control" onchange="handleModalBrandChange()">
+                            <option value="">Selecione a marca...</option>
+                        </select>
+                        <input type="text" id="equip-brand" name="brand" class="form-control mt-2 hidden" placeholder="Digite a marca...">
                     </div>
                     <div class="form-group">
-                        <label class="form-label" for="equip-model">Modelo</label>
-                        <input type="text" id="equip-model" name="model" class="form-control" placeholder="Ex: WindFree">
+                        <label class="form-label" for="equip-model-select">Modelo</label>
+                        <select id="equip-model-select" class="form-control" onchange="handleModalModelChange()">
+                            <option value="">Selecione a marca primeiro...</option>
+                        </select>
+                        <input type="text" id="equip-model" name="model" class="form-control mt-2 hidden" placeholder="Digite o modelo...">
                     </div>
                 </div>
                 <div class="form-group">
@@ -330,6 +336,105 @@
 
 @push('scripts')
 <script>
+const BRANDS_MODELS = {
+    'Samsung': ['WindFree', 'Dual Inverter', 'Max Plus', 'Galaxy Book', 'Smart Inverter'],
+    'LG': ['Dual Inverter', 'Artcool', 'Smart Inverter', 'ThinQ', 'Gram'],
+    'Google': ['Gemini', 'Nest Hub', 'Pixel Server', 'Chromecast', 'Pixelbook'],
+    'Dell': ['PowerEdge', 'OptiPlex', 'Latitude', 'Inspiron', 'Precision', 'Vostro'],
+    'HP': ['ProLiant', 'LaserJet', 'EliteBook', 'Pavilion', 'ProBook', 'Smart Tank'],
+    'Apple': ['MacBook Pro', 'MacBook Air', 'iMac', 'Mac mini', 'Mac Studio', 'iPad Pro', 'iPhone Pro'],
+    'Lenovo': ['ThinkPad', 'ThinkCentre', 'ThinkSystem', 'IdeaPad', 'Legion', 'Yoga'],
+    'Cisco': ['Catalyst', 'Meraki', 'ASA Firewall', 'ISR Router', 'Nexus'],
+    'Ubiquiti': ['UniFi AP', 'UniFi Switch', 'EdgeRouter', 'UniFi Dream Machine', 'U6 Pro'],
+    'MikroTik': ['hEX', 'Cloud Core Router (CCR)', 'Cloud Router Switch (CRS)', 'NetMetal', 'Chateau'],
+    'Daikin': ['Fit', 'VRV', 'Inverter Split', 'Multi-Split'],
+    'Carrier': ['XPower Inverter', 'Piso Teto', 'Cassete Inverter', '40KV'],
+    'Gree': ['G-Prime', 'Eco Garden', 'Inverter Split', 'Eco Air']
+};
+
+function populateModalBrands() {
+    const brandSelect = document.getElementById('equip-brand-select');
+    brandSelect.innerHTML = '<option value="">Selecione a marca...</option>';
+    Object.keys(BRANDS_MODELS).sort().forEach(brand => {
+        const opt = document.createElement('option');
+        opt.value = brand;
+        opt.textContent = brand;
+        brandSelect.appendChild(opt);
+    });
+    const optOutro = document.createElement('option');
+    optOutro.value = 'outro';
+    optOutro.textContent = 'Outro (especificar)...';
+    brandSelect.appendChild(optOutro);
+}
+
+function handleModalBrandChange() {
+    const brandSelect = document.getElementById('equip-brand-select');
+    const brandInput = document.getElementById('equip-brand');
+    const modelSelect = document.getElementById('equip-model-select');
+    const modelInput = document.getElementById('equip-model');
+    
+    const selectedBrand = brandSelect.value;
+    
+    modelSelect.innerHTML = '<option value="">Selecione o modelo...</option>';
+    modelInput.value = '';
+    modelInput.classList.add('hidden');
+    modelInput.required = false;
+    
+    if (selectedBrand === 'outro') {
+        brandInput.value = '';
+        brandInput.classList.remove('hidden');
+        brandInput.required = true;
+        
+        const optOutro = document.createElement('option');
+        optOutro.value = 'outro';
+        optOutro.textContent = 'Outro (especificar)...';
+        modelSelect.appendChild(optOutro);
+        modelSelect.value = 'outro';
+        modelInput.classList.remove('hidden');
+        modelInput.required = true;
+    } else if (selectedBrand) {
+        brandInput.value = selectedBrand;
+        brandInput.classList.add('hidden');
+        brandInput.required = false;
+        
+        const models = BRANDS_MODELS[selectedBrand] || [];
+        models.forEach(model => {
+            const opt = document.createElement('option');
+            opt.value = model;
+            opt.textContent = model;
+            modelSelect.appendChild(opt);
+        });
+        const optOutro = document.createElement('option');
+        optOutro.value = 'outro';
+        optOutro.textContent = 'Outro (especificar)...';
+        modelSelect.appendChild(optOutro);
+    } else {
+        brandInput.value = '';
+        brandInput.classList.add('hidden');
+        brandInput.required = false;
+        modelSelect.innerHTML = '<option value="">Selecione a marca primeiro...</option>';
+    }
+}
+
+function handleModalModelChange() {
+    const modelSelect = document.getElementById('equip-model-select');
+    const modelInput = document.getElementById('equip-model');
+    
+    if (modelSelect.value === 'outro') {
+        modelInput.value = '';
+        modelInput.classList.remove('hidden');
+        modelInput.required = true;
+    } else {
+        modelInput.value = modelSelect.value;
+        modelInput.classList.add('hidden');
+        modelInput.required = false;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    populateModalBrands();
+});
+
 function openAddEquipmentModal() {
     const modal = document.getElementById('equipment-modal');
     document.getElementById('equipment-modal-title').innerText = 'Novo Equipamento';
@@ -337,8 +442,8 @@ function openAddEquipmentModal() {
     document.getElementById('equipment-modal-method-container').innerHTML = '';
     
     document.getElementById('equip-name').value = '';
-    document.getElementById('equip-brand').value = '';
-    document.getElementById('equip-model').value = '';
+    document.getElementById('equip-brand-select').value = '';
+    handleModalBrandChange();
     document.getElementById('equip-serial').value = '';
     document.getElementById('equip-notes').value = '';
     
@@ -353,10 +458,38 @@ function openEditEquipmentModal(equip) {
     document.getElementById('equipment-modal-method-container').innerHTML = '@method("PUT")';
     
     document.getElementById('equip-name').value = equip.name || '';
-    document.getElementById('equip-brand').value = equip.brand || '';
-    document.getElementById('equip-model').value = equip.model || '';
     document.getElementById('equip-serial').value = equip.serial_number || '';
     document.getElementById('equip-notes').value = equip.notes || '';
+    
+    const brand = equip.brand || '';
+    const model = equip.model || '';
+    
+    if (brand && BRANDS_MODELS[brand]) {
+        document.getElementById('equip-brand-select').value = brand;
+        handleModalBrandChange();
+        if (model && BRANDS_MODELS[brand].includes(model)) {
+            document.getElementById('equip-model-select').value = model;
+            handleModalModelChange();
+        } else if (model) {
+            document.getElementById('equip-model-select').value = 'outro';
+            handleModalModelChange();
+            document.getElementById('equip-model').value = model;
+        } else {
+            document.getElementById('equip-model-select').value = '';
+            handleModalModelChange();
+        }
+    } else if (brand) {
+        document.getElementById('equip-brand-select').value = 'outro';
+        handleModalBrandChange();
+        document.getElementById('equip-brand').value = brand;
+        
+        document.getElementById('equip-model-select').value = 'outro';
+        handleModalModelChange();
+        document.getElementById('equip-model').value = model;
+    } else {
+        document.getElementById('equip-brand-select').value = '';
+        handleModalBrandChange();
+    }
     
     modal.classList.remove('hidden');
     modal.classList.add('flex');

@@ -4,8 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="theme-color" content="#0f172a">
     <title>{{ config('app.name') }} — @yield('title', 'Dashboard')</title>
     <meta name="description" content="@yield('description', 'Sistema de Ordens de Serviço Externas')">
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icons/icon.svg">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Neksa">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -354,23 +364,29 @@
     </main>
 </div>
 
-<nav class="bottom-nav">
-    <a href="{{ route('dashboard') }}" class="bottom-nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
-        <span class="bottom-nav-icon"><x-heroicon-o-chart-bar class="w-6 h-6"/></span><span>Dashboard</span>
-    </a>
-    <a href="{{ route('service-orders.index') }}" class="bottom-nav-item {{ request()->routeIs('service-orders.*') ? 'active' : '' }}">
-        <span class="bottom-nav-icon"><x-heroicon-o-wrench-screwdriver class="w-6 h-6"/></span><span>OS</span>
-    </a>
-    <a href="{{ route('service-orders.create') }}" class="bottom-nav-item">
-        <span class="bottom-nav-icon text-indigo-600"><x-heroicon-s-plus-circle class="w-8 h-8"/></span>
-    </a>
-    <a href="{{ route('routes.index') }}" class="bottom-nav-item {{ request()->routeIs('routes.*') ? 'active' : '' }}">
-        <span class="bottom-nav-icon"><x-heroicon-o-map class="w-6 h-6"/></span><span>Rotas</span>
-    </a>
-    <a href="{{ route('clients.index') }}" class="bottom-nav-item {{ request()->routeIs('clients.*') ? 'active' : '' }}">
-        <span class="bottom-nav-icon"><x-heroicon-o-users class="w-6 h-6"/></span><span>Clientes</span>
-    </a>
-</nav>
+@hasSection('topbar-actions')
+    <div class="bottom-actions-bar">
+        @yield('topbar-actions')
+    </div>
+@else
+    <nav class="bottom-nav">
+        <a href="{{ route('dashboard') }}" class="bottom-nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+            <span class="bottom-nav-icon"><x-heroicon-o-chart-bar class="w-6 h-6"/></span><span>Dashboard</span>
+        </a>
+        <a href="{{ route('service-orders.index') }}" class="bottom-nav-item {{ request()->routeIs('service-orders.*') ? 'active' : '' }}">
+            <span class="bottom-nav-icon"><x-heroicon-o-wrench-screwdriver class="w-6 h-6"/></span><span>OS</span>
+        </a>
+        <a href="{{ route('service-orders.create') }}" class="bottom-nav-item">
+            <span class="bottom-nav-icon text-indigo-600"><x-heroicon-s-plus-circle class="w-8 h-8"/></span>
+        </a>
+        <a href="{{ route('routes.index') }}" class="bottom-nav-item {{ request()->routeIs('routes.*') ? 'active' : '' }}">
+            <span class="bottom-nav-icon"><x-heroicon-o-map class="w-6 h-6"/></span><span>Rotas</span>
+        </a>
+        <a href="{{ route('clients.index') }}" class="bottom-nav-item {{ request()->routeIs('clients.*') ? 'active' : '' }}">
+            <span class="bottom-nav-icon"><x-heroicon-o-users class="w-6 h-6"/></span><span>Clientes</span>
+        </a>
+    </nav>
+@endif
 
 @livewireScripts
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -454,6 +470,20 @@ document.addEventListener('DOMContentLoaded', function() {
     // Auto-mask CEP
     document.querySelectorAll('[data-mask="cep"]').forEach(el => {
         IMask(el, { mask: '00000-000' });
+    });
+
+    // ── PWA Responsive: Auto-generate data-label for table cards ──
+    document.querySelectorAll('.table-wrap table').forEach(table => {
+        if (table.classList.contains('no-responsive')) return;
+        const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+        if (headers.length === 0) return;
+        table.querySelectorAll('tbody tr').forEach(row => {
+            row.querySelectorAll('td').forEach((td, index) => {
+                if (headers[index]) {
+                    td.setAttribute('data-label', headers[index]);
+                }
+            });
+        });
     });
 });
 </script>

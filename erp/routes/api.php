@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\ChecklistController;
 use App\Http\Controllers\Api\V1\ServiceOrderController;
 use App\Http\Controllers\Api\V1\ClientController;
 use Illuminate\Http\Request;
@@ -18,6 +19,11 @@ Route::prefix('v1')->middleware(['auth:sanctum'])->group(function () {
     Route::post('/service-orders/{serviceOrder}/checkin', [ServiceOrderController::class, 'checkIn']);
     Route::post('/service-orders/{serviceOrder}/signature', [ServiceOrderController::class, 'signature']);
     Route::post('/service-orders/{serviceOrder}/attachments', [ServiceOrderController::class, 'uploadAttachments']);
+    // Checklists (offline-first)
+    Route::get('/service-orders/{serviceOrder}/checklists', [ChecklistController::class, 'index']);
+    Route::patch('/checklist-instances/{checklist}/answers', [ChecklistController::class, 'syncAnswers']);
+
+    // Legado: mantido para compatibilidade com clientes antigos
     Route::post('/service-orders/{serviceOrder}/checklists/{checklist}/fill', [ServiceOrderController::class, 'fillChecklist']);
 
     // Clientes

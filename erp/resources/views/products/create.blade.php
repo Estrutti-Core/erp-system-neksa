@@ -2,6 +2,13 @@
 
 @section('title', 'Cadastrar Item')
 
+@section('topbar-actions')
+    <a href="{{ route('products.index') }}" class="btn btn-secondary" style="border-radius: 8px;">Cancelar</a>
+    <button type="submit" form="product-form" class="btn btn-primary" style="background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%); border-radius: 8px;">
+        Salvar Cadastro
+    </button>
+@endsection
+
 @section('content')
 <div style="max-width: 900px; margin: 0 auto; padding-bottom: 40px;">
     <!-- Cabeçalho de Ações -->
@@ -163,13 +170,6 @@
             </div>
         </div>
 
-        <!-- Ações do Formulário -->
-        <div class="flex items-center justify-end gap-3">
-            <a href="{{ route('products.index') }}" class="btn btn-secondary" style="border-radius: 8px;">Cancelar</a>
-            <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%); border-radius: 8px; padding: 10px 24px;">
-                Salvar Cadastro
-            </button>
-        </div>
     </form>
 </div>
 @endsection

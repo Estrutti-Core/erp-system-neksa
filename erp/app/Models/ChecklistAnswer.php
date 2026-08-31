@@ -18,7 +18,13 @@ class ChecklistAnswer extends Model
         'checklist_question_id',
         'service_order_checklist_question_id',
         'answer_value',
+        'observation',
         'photo_path',
+        'photos_json',
+    ];
+
+    protected $casts = [
+        'photos_json' => 'array',
     ];
 
     public function getActivitylogOptions(): LogOptions
@@ -35,17 +41,11 @@ class ChecklistAnswer extends Model
         return $this->belongsTo(ServiceOrderChecklist::class, 'service_order_checklist_id');
     }
 
-    /**
-     * Pergunta instanciada (snapshot — fonte primária de leitura).
-     */
     public function instancedQuestion(): BelongsTo
     {
         return $this->belongsTo(ServiceOrderChecklistQuestion::class, 'service_order_checklist_question_id');
     }
 
-    /**
-     * Pergunta original do template (apenas para retrocompatibilidade).
-     */
     public function question(): BelongsTo
     {
         return $this->belongsTo(ChecklistQuestion::class, 'checklist_question_id')->withTrashed();
@@ -54,5 +54,18 @@ class ChecklistAnswer extends Model
     public function getPhotoUrlAttribute(): ?string
     {
         return $this->photo_path ? Storage::disk('public')->url($this->photo_path) : null;
+    }
+
+    /** Retorna URLs de todas as fotos (novo multi-foto + fallback legado). */
+    public function getPhotosUrlsAttribute(): array
+    {
+        if (!empty($this->photos_json)) {
+            return array_map(
+                fn($p) => Storage::disk('public')->url($p),
+                $this->photos_json
+            );
+        }
+
+        return $this->photo_path ? [Storage::disk('public')->url($this->photo_path)] : [];
     }
 }

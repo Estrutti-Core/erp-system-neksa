@@ -2,7 +2,36 @@
 @section('title', 'Novo Cliente')
 
 @section('content')
-<div style="max-width: 900px; margin: 0 auto; padding-bottom: 40px;">
+<style>
+.fixed-actions-bar {
+    position: fixed;
+    bottom: 0;
+    left: var(--sidebar-width, 260px);
+    right: 0;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(8px);
+    border-top: 1px solid #e2e8f0;
+    padding: 16px 24px;
+    z-index: 35;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
+    transition: left .25s ease;
+}
+
+body.sidebar-collapsed-active .fixed-actions-bar {
+    left: var(--sidebar-collapsed-width, 70px);
+}
+
+@media (max-width: 768px) {
+    .fixed-actions-bar {
+        left: 0;
+        bottom: 60px; /* Aligned above bottom-nav */
+        padding: 12px 16px;
+        background: #fff;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.08);
+    }
+}
+</style>
+<div style="max-width: 900px; margin: 0 auto; padding-bottom: 120px;">
     <!-- Cabeçalho de Ações -->
     <div class="flex items-center justify-between mb-4">
         <a href="{{ route('clients.index') }}" class="btn btn-secondary" style="border-radius: 8px;">
@@ -236,12 +265,14 @@
             </div>
         </div>
 
-        <!-- Ações do Formulário -->
-        <div class="flex items-center justify-end gap-3">
-            <a href="{{ route('clients.index') }}" class="btn btn-secondary" style="border-radius: 8px;">Cancelar</a>
-            <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%); border-radius: 8px; padding: 10px 24px;">
-                Salvar Cadastro
-            </button>
+        <!-- Ações do Formulário (Floating Bar) -->
+        <div class="fixed-actions-bar">
+            <div style="max-width: 900px; margin: 0 auto; width: 100%; display: flex; justify-content: flex-end; gap: 12px; align-items: center;">
+                <a href="{{ route('clients.index') }}" class="btn btn-secondary" style="border-radius: 8px;">Cancelar</a>
+                <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%); border-radius: 8px; padding: 10px 24px;">
+                    Salvar Cadastro
+                </button>
+            </div>
         </div>
     </form>
 </div>
@@ -252,6 +283,136 @@
     let cnaeIndex = 0;
     let contactIndex = 0;
     let equipmentIndex = 0;
+
+    const BRANDS_MODELS = {
+        'Samsung': ['WindFree', 'Dual Inverter', 'Max Plus', 'Galaxy Book', 'Smart Inverter'],
+        'LG': ['Dual Inverter', 'Artcool', 'Smart Inverter', 'ThinQ', 'Gram'],
+        'Google': ['Gemini', 'Nest Hub', 'Pixel Server', 'Chromecast', 'Pixelbook'],
+        'Dell': ['PowerEdge', 'OptiPlex', 'Latitude', 'Inspiron', 'Precision', 'Vostro'],
+        'HP': ['ProLiant', 'LaserJet', 'EliteBook', 'Pavilion', 'ProBook', 'Smart Tank'],
+        'Apple': ['MacBook Pro', 'MacBook Air', 'iMac', 'Mac mini', 'Mac Studio', 'iPad Pro', 'iPhone Pro'],
+        'Lenovo': ['ThinkPad', 'ThinkCentre', 'ThinkSystem', 'IdeaPad', 'Legion', 'Yoga'],
+        'Cisco': ['Catalyst', 'Meraki', 'ASA Firewall', 'ISR Router', 'Nexus'],
+        'Ubiquiti': ['UniFi AP', 'UniFi Switch', 'EdgeRouter', 'UniFi Dream Machine', 'U6 Pro'],
+        'MikroTik': ['hEX', 'Cloud Core Router (CCR)', 'Cloud Router Switch (CRS)', 'NetMetal', 'Chateau'],
+        'Daikin': ['Fit', 'VRV', 'Inverter Split', 'Multi-Split'],
+        'Carrier': ['XPower Inverter', 'Piso Teto', 'Cassete Inverter', '40KV'],
+        'Gree': ['G-Prime', 'Eco Garden', 'Inverter Split', 'Eco Air']
+    };
+
+    function populateBrandsSelect(index) {
+        const brandSelect = document.getElementById(`equip-brand-select-${index}`);
+        brandSelect.innerHTML = '<option value="">Selecione a marca...</option>';
+        Object.keys(BRANDS_MODELS).sort().forEach(brand => {
+            const opt = document.createElement('option');
+            opt.value = brand;
+            opt.textContent = brand;
+            brandSelect.appendChild(opt);
+        });
+        const optOutro = document.createElement('option');
+        optOutro.value = 'outro';
+        optOutro.textContent = 'Outro (especificar)...';
+        brandSelect.appendChild(optOutro);
+    }
+
+    function handleBrandChange(index) {
+        const brandSelect = document.getElementById(`equip-brand-select-${index}`);
+        const brandInput = document.getElementById(`equip-brand-custom-${index}`);
+        const modelSelect = document.getElementById(`equip-model-select-${index}`);
+        const modelInput = document.getElementById(`equip-model-custom-${index}`);
+        
+        const selectedBrand = brandSelect.value;
+        
+        modelSelect.innerHTML = '<option value="">Selecione o modelo...</option>';
+        modelInput.value = '';
+        modelInput.classList.add('hidden');
+        modelInput.required = false;
+        
+        if (selectedBrand === 'outro') {
+            brandInput.value = '';
+            brandInput.classList.remove('hidden');
+            brandInput.required = true;
+            
+            const optOutro = document.createElement('option');
+            optOutro.value = 'outro';
+            optOutro.textContent = 'Outro (especificar)...';
+            modelSelect.appendChild(optOutro);
+            modelSelect.value = 'outro';
+            modelInput.classList.remove('hidden');
+            modelInput.required = true;
+        } else if (selectedBrand) {
+            brandInput.value = selectedBrand;
+            brandInput.classList.add('hidden');
+            brandInput.required = false;
+            
+            const models = BRANDS_MODELS[selectedBrand] || [];
+            models.forEach(model => {
+                const opt = document.createElement('option');
+                opt.value = model;
+                opt.textContent = model;
+                modelSelect.appendChild(opt);
+            });
+            const optOutro = document.createElement('option');
+            optOutro.value = 'outro';
+            optOutro.textContent = 'Outro (especificar)...';
+            modelSelect.appendChild(optOutro);
+        } else {
+            brandInput.value = '';
+            brandInput.classList.add('hidden');
+            brandInput.required = false;
+            modelSelect.innerHTML = '<option value="">Selecione a marca primeiro...</option>';
+        }
+    }
+
+    function handleModelChange(index) {
+        const modelSelect = document.getElementById(`equip-model-select-${index}`);
+        const modelInput = document.getElementById(`equip-model-custom-${index}`);
+        
+        if (modelSelect.value === 'outro') {
+            modelInput.value = '';
+            modelInput.classList.remove('hidden');
+            modelInput.required = true;
+        } else {
+            modelInput.value = modelSelect.value;
+            modelInput.classList.add('hidden');
+            modelInput.required = false;
+        }
+    }
+
+    function initEquipmentRow(index, brand, model) {
+        populateBrandsSelect(index);
+        const brandSelect = document.getElementById(`equip-brand-select-${index}`);
+        const brandInput = document.getElementById(`equip-brand-custom-${index}`);
+        const modelSelect = document.getElementById(`equip-model-select-${index}`);
+        const modelInput = document.getElementById(`equip-model-custom-${index}`);
+        
+        if (brand && BRANDS_MODELS[brand]) {
+            brandSelect.value = brand;
+            handleBrandChange(index);
+            if (model && BRANDS_MODELS[brand].includes(model)) {
+                modelSelect.value = model;
+                handleModelChange(index);
+            } else if (model) {
+                modelSelect.value = 'outro';
+                handleModelChange(index);
+                modelInput.value = model;
+            } else {
+                modelSelect.value = '';
+                handleModelChange(index);
+            }
+        } else if (brand) {
+            brandSelect.value = 'outro';
+            handleBrandChange(index);
+            brandInput.value = brand;
+            
+            modelSelect.value = 'outro';
+            handleModelChange(index);
+            modelInput.value = model;
+        } else {
+            brandSelect.value = '';
+            handleBrandChange(index);
+        }
+    }
 
     function addEquipmentRow(equipment = {}) {
         const container = document.getElementById('equipments-container');
@@ -278,14 +439,20 @@
                 </div>
                 <div class="form-group" style="margin-bottom:0;">
                     <label class="form-label" style="font-size:11px;">Marca</label>
-                    <input type="text" name="equipments[${equipmentIndex}][brand]" value="${equipment.brand || ''}" class="form-control" placeholder="Ex: LG, Dell...">
+                    <select id="equip-brand-select-${equipmentIndex}" class="form-control" onchange="handleBrandChange(${equipmentIndex})">
+                        <option value="">Selecione a marca...</option>
+                    </select>
+                    <input type="text" id="equip-brand-custom-${equipmentIndex}" name="equipments[${equipmentIndex}][brand]" value="${equipment.brand || ''}" class="form-control mt-2 hidden" placeholder="Digite a marca...">
                 </div>
             </div>
 
             <div class="grid-2 mb-3">
                 <div class="form-group" style="margin-bottom:0;">
                     <label class="form-label" style="font-size:11px;">Modelo</label>
-                    <input type="text" name="equipments[${equipmentIndex}][model]" value="${equipment.model || ''}" class="form-control" placeholder="Modelo do equipamento">
+                    <select id="equip-model-select-${equipmentIndex}" class="form-control" onchange="handleModelChange(${equipmentIndex})">
+                        <option value="">Selecione a marca primeiro...</option>
+                    </select>
+                    <input type="text" id="equip-model-custom-${equipmentIndex}" name="equipments[${equipmentIndex}][model]" value="${equipment.model || ''}" class="form-control mt-2 hidden" placeholder="Digite o modelo...">
                 </div>
                 <div class="form-group" style="margin-bottom:0;">
                     <label class="form-label" style="font-size:11px;">Número de Série</label>
@@ -300,6 +467,7 @@
         `;
 
         container.appendChild(card);
+        initEquipmentRow(equipmentIndex, equipment.brand || '', equipment.model || '');
         equipmentIndex++;
     }
 

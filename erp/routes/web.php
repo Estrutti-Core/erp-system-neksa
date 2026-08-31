@@ -33,6 +33,10 @@ Route::middleware(['auth'])->group(function () {
         ]);
 
     // Configurações de Checklists
+    Route::get('settings/blocks/{block}/questions',
+        [\App\Http\Controllers\Admin\ChecklistTemplateController::class, 'blockQuestions'])
+        ->name('settings.checklists.block-questions');
+
     Route::resource('settings/checklists', \App\Http\Controllers\Admin\ChecklistTemplateController::class)
         ->names([
             'index' => 'settings.checklists.index',
@@ -104,6 +108,9 @@ Route::middleware(['auth'])->group(function () {
         Route::put('checklists/{checklist}/fill',
             [\App\Http\Controllers\ServiceOrderOperationsController::class, 'saveChecklist'])
             ->name('service-orders.checklists.save');
+        Route::get('checklists/{checklist}/pdf',
+            [\App\Http\Controllers\ServiceOrderOperationsController::class, 'checklistPdf'])
+            ->name('service-orders.checklists.pdf');
         Route::post('checkin',
             [\App\Http\Controllers\ServiceOrderOperationsController::class, 'checkIn'])
             ->name('service-orders.checkin');
