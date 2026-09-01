@@ -16,7 +16,9 @@ class ForceHttps
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!$request->secure() && config('app.env') === 'production') {
+        // Baseado no APP_URL e nao no ambiente: uma instalacao em rede local roda
+        // em HTTP puro e redirecionar para https ali gera loop de redirecionamento.
+        if (!$request->secure() && str_starts_with((string) config('app.url'), 'https://')) {
             return redirect()->secure($request->getRequestUri());
         }
 

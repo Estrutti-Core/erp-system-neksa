@@ -27,7 +27,8 @@ docker compose build || (echo [ERRO] Falha no build & pause & exit /b 1)
 findstr /b /c:"APP_KEY=base64:" ".env" >nul 2>&1
 if errorlevel 1 (
   echo [2/4] Gerando APP_KEY...
-  for /f "delims=" %%K in ('docker run --rm neksa-erp:latest php artisan key:generate --show --no-ansi') do set "APPKEY=%%K"
+  for /f "delims=" %%K in ('docker run --rm neksa-erp:latest php artisan key:generate --show --no-ansi ^| findstr /b "base64:"') do set "APPKEY=%%K"
+  if not defined APPKEY (echo [ERRO] Nao foi possivel gerar a APP_KEY. & pause & exit /b 1)
   powershell -NoProfile -Command "(Get-Content '.env') -replace '^APP_KEY=.*', 'APP_KEY=!APPKEY!' | Set-Content -Encoding ASCII '.env'"
 ) else (
   echo [2/4] APP_KEY ja existe, mantendo.
