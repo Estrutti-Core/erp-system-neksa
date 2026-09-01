@@ -10,10 +10,20 @@ COPY resources ./resources
 RUN npm run build
 
 # ---------- 2) dependencias PHP ----------
-FROM composer:2 AS vendor
+# Usa a mesma base do runtime para que as extensoes exigidas pelo composer.lock
+# (gd, zip, intl, ...) existam tambem na hora de resolver as dependencias.
+FROM serversideup/php:8.4-cli AS vendor
+USER root
+RUN install-php-extensions pgsql pdo_pgsql redis gd zip bcmath intl pcntl
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 WORKDIR /app
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction
+# Retry: a API do GitHub as vezes devolve 504 e derruba o download dos pacotes.
+RUN for i in 1 2 3; do \
+      composer install --no-dev --no-scripts --no-autoloader --prefer-dist \
+        --no-interaction --no-progress && exit 0; \
+      echo "composer install falhou (tentativa $i), repetindo em 15s..."; sleep 15; \
+    done; exit 1
 COPY . .
 RUN composer dump-autoload --optimize --classmap-authoritative --no-dev
 
@@ -26,7 +36,7 @@ ENV PHP_OPCACHE_ENABLE=1 \
     AUTORUN_ENABLED=false
 
 USER root
-RUN install-php-extensions pgsql pdo_pgsql redis gd zip bcmath intl
+RUN install-php-extensions pgsql pdo_pgsql redis gd zip bcmath intl pcntl
 USER www-data
 
 WORKDIR /var/www/html
