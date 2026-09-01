@@ -44,13 +44,32 @@ Digite `exit` para sair.
 |---|---|
 | `iniciar.bat` | Sobe (se estiver parado) e abre o navegador |
 | `parar.bat` | Para os serviços |
-| `atualizar.bat` | Reconstrói após atualizar o código |
+| `atualizar.bat` | Baixa a versão nova (git pull) e reconstrói |
 | `backup.bat` | Dump do Postgres em `backups\` |
 | `instalar.bat` | Instalação inicial (pode rodar de novo com segurança) |
 
 **Início automático:** os containers têm `restart: unless-stopped`. Com o Docker
 Desktop iniciando junto com o login do Windows, o ERP volta ao ar sozinho depois
 de qualquer reinício ou queda de energia. Nenhuma janela fica aberta.
+
+### Como receber atualizações
+
+Duplo clique em **`atualizar.bat`**. Ele faz `git pull` na branch atual,
+reconstrói a imagem, reinicia os serviços e roda as migrations novas.
+O `.env` e o banco de dados **não são tocados**.
+
+Para isso funcionar, o projeto precisa ter sido **clonado** com git (não copiado
+como .zip) e o **Git for Windows** instalado: https://git-scm.com/download/win
+
+```
+git clone <url-do-repositorio> C:\neksa-erp
+```
+
+Se o Git não estiver instalado, o `atualizar.bat` ainda funciona — mas só
+reconstrói o código que já está na pasta; a atualização teria de ser copiada
+à mão.
+
+Recomendado: rodar `backup.bat` antes de uma atualização.
 
 **Atalho na área de trabalho:** clique com o botão direito em `iniciar.bat` →
 *Enviar para → Área de trabalho (criar atalho)*. Renomeie para "Neksa ERP".
