@@ -41,7 +41,10 @@ class AppServiceProvider extends ServiceProvider
         // Configurar paginação para usar Bootstrap/CSS puro simples
         \Illuminate\Pagination\Paginator::useBootstrapFive();
 
-        if (config('app.env') === 'production') {
+        // Deriva do APP_URL em vez do ambiente: em producao atras de HTTPS o
+        // APP_URL e https, mas uma instalacao em rede local roda em HTTP puro e
+        // forcar https ali gera loop de redirecionamento.
+        if (str_starts_with((string) config('app.url'), 'https://')) {
             \Illuminate\Support\Facades\URL::forceScheme('https');
         }
 

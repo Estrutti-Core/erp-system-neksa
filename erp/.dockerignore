@@ -13,3 +13,4 @@ tests
 public/build
 deploy/windows/backups
 .phpunit.result.cache
+bootstrap/cache/*.php

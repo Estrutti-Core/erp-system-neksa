@@ -33,7 +33,8 @@ FROM serversideup/php:8.4-fpm-nginx AS app
 ENV PHP_OPCACHE_ENABLE=1 \
     APP_ENV=production \
     APP_DEBUG=false \
-    AUTORUN_ENABLED=false
+    AUTORUN_ENABLED=false \
+    SHOW_WELCOME_MESSAGE=false
 
 USER root
 RUN install-php-extensions pgsql pdo_pgsql redis gd zip bcmath intl pcntl
@@ -44,6 +45,8 @@ COPY --chown=www-data:www-data . .
 COPY --from=vendor --chown=www-data:www-data /app/vendor ./vendor
 COPY --from=assets --chown=www-data:www-data /app/public/build ./public/build
 
-RUN rm -rf .env .git tests node_modules \
+# bootstrap/cache guarda o manifest de pacotes gerado com as deps de dev;
+# mantido, ele quebra a aplicacao procurando pacotes que --no-dev removeu.
+RUN rm -rf .env .git tests node_modules bootstrap/cache/*.php \
     && mkdir -p storage/framework/{cache,sessions,views} storage/logs bootstrap/cache \
     && chmod -R ug+rw storage bootstrap/cache
